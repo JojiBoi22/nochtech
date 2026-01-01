@@ -1,17 +1,20 @@
-import { isV2ResponseBody, isV3ResponseBody, QueryResponseStatus, } from "./agent/index.js";
-import { CertifiedRejectErrorCode, ExternalError, InputError, MissingCanisterIdErrorCode, MissingRootKeyErrorCode, RejectError, UncertifiedRejectErrorCode, UncertifiedRejectUpdateErrorCode, UnexpectedErrorCode, UnknownError, } from "./errors.js";
-import { IDL } from '@dfinity/candid';
-import { pollForResponse, DEFAULT_POLLING_OPTIONS } from "./polling/index.js";
-import { Principal } from '@dfinity/principal';
-import { Certificate, lookupResultToBuffer } from "./certificate.js";
-import { HttpAgent } from "./agent/http/index.js";
-import { utf8ToBytes } from '@noble/hashes/utils';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ACTOR_METHOD_WITH_CERTIFICATE = exports.ACTOR_METHOD_WITH_HTTP_DETAILS = exports.Actor = void 0;
+const index_ts_1 = require("./agent/index.js");
+const errors_ts_1 = require("./errors.js");
+const candid_1 = require("@dfinity/candid");
+const index_ts_2 = require("./polling/index.js");
+const principal_1 = require("@dfinity/principal");
+const certificate_ts_1 = require("./certificate.js");
+const index_ts_3 = require("./agent/http/index.js");
+const utils_1 = require("@noble/hashes/utils");
 const metadataSymbol = Symbol.for('ic-agent-metadata');
 /**
  * An actor base class. An actor is an object containing only functions that will
  * return a promise. These functions are derived from the IDL definition.
  */
-export class Actor {
+class Actor {
     /**
      * Get the Agent class this Actor would call, or undefined if the Actor would use
      * the default agent (global.ic.agent).
@@ -28,17 +31,17 @@ export class Actor {
         return actor[metadataSymbol].service;
     }
     static canisterIdOf(actor) {
-        return Principal.from(actor[metadataSymbol].config.canisterId);
+        return principal_1.Principal.from(actor[metadataSymbol].config.canisterId);
     }
     static createActorClass(interfaceFactory, options) {
-        const service = interfaceFactory({ IDL });
+        const service = interfaceFactory({ IDL: candid_1.IDL });
         class CanisterActor extends Actor {
             constructor(config) {
                 if (!config.canisterId) {
-                    throw InputError.fromCode(new MissingCanisterIdErrorCode(config.canisterId));
+                    throw errors_ts_1.InputError.fromCode(new errors_ts_1.MissingCanisterIdErrorCode(config.canisterId));
                 }
                 const canisterId = typeof config.canisterId === 'string'
-                    ? Principal.fromText(config.canisterId)
+                    ? principal_1.Principal.fromText(config.canisterId)
                     : config.canisterId;
                 super({
                     config: {
@@ -50,10 +53,10 @@ export class Actor {
                 });
                 for (const [methodName, func] of service._fields) {
                     if (options?.httpDetails) {
-                        func.annotations.push(ACTOR_METHOD_WITH_HTTP_DETAILS);
+                        func.annotations.push(exports.ACTOR_METHOD_WITH_HTTP_DETAILS);
                     }
                     if (options?.certificate) {
-                        func.annotations.push(ACTOR_METHOD_WITH_CERTIFICATE);
+                        func.annotations.push(exports.ACTOR_METHOD_WITH_CERTIFICATE);
                     }
                     this[methodName] = _createActorMethod(this, methodName, func, config.blsVerify);
                 }
@@ -117,7 +120,7 @@ export class Actor {
      */
     static createActor(interfaceFactory, configuration) {
         if (!configuration.canisterId) {
-            throw InputError.fromCode(new MissingCanisterIdErrorCode(configuration.canisterId));
+            throw errors_ts_1.InputError.fromCode(new errors_ts_1.MissingCanisterIdErrorCode(configuration.canisterId));
         }
         return new (this.createActorClass(interfaceFactory))(configuration);
     }
@@ -146,11 +149,12 @@ export class Actor {
         this[metadataSymbol] = Object.freeze(metadata);
     }
 }
+exports.Actor = Actor;
 // IDL functions can have multiple return values, so decoding always
 // produces an array. Ensure that functions with single or zero return
 // values behave as expected.
 function decodeReturnValue(types, msg) {
-    const returnValues = IDL.decode(types, msg);
+    const returnValues = candid_1.IDL.decode(types, msg);
     switch (returnValues.length) {
         case 0:
             return undefined;
@@ -161,10 +165,10 @@ function decodeReturnValue(types, msg) {
     }
 }
 const DEFAULT_ACTOR_CONFIG = {
-    pollingOptions: DEFAULT_POLLING_OPTIONS,
+    pollingOptions: index_ts_2.DEFAULT_POLLING_OPTIONS,
 };
-export const ACTOR_METHOD_WITH_HTTP_DETAILS = 'http-details';
-export const ACTOR_METHOD_WITH_CERTIFICATE = 'certificate';
+exports.ACTOR_METHOD_WITH_HTTP_DETAILS = 'http-details';
+exports.ACTOR_METHOD_WITH_CERTIFICATE = 'certificate';
 function _createActorMethod(actor, methodName, func, blsVerify) {
     let caller;
     if (func.annotations.includes('query') || func.annotations.includes('composite_query')) {
@@ -177,9 +181,9 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
                     ...options,
                 }),
             };
-            const agent = options.agent || actor[metadataSymbol].config.agent || new HttpAgent();
-            const cid = Principal.from(options.canisterId || actor[metadataSymbol].config.canisterId);
-            const arg = IDL.encode(func.argTypes, args);
+            const agent = options.agent || actor[metadataSymbol].config.agent || new index_ts_3.HttpAgent();
+            const cid = principal_1.Principal.from(options.canisterId || actor[metadataSymbol].config.canisterId);
+            const arg = candid_1.IDL.encode(func.argTypes, args);
             const result = await agent.query(cid, {
                 methodName,
                 arg,
@@ -190,17 +194,17 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
                 requestDetails: result.requestDetails,
             };
             switch (result.status) {
-                case QueryResponseStatus.Rejected: {
-                    const uncertifiedRejectErrorCode = new UncertifiedRejectErrorCode(result.requestId, result.reject_code, result.reject_message, result.error_code, result.signatures);
+                case index_ts_1.QueryResponseStatus.Rejected: {
+                    const uncertifiedRejectErrorCode = new errors_ts_1.UncertifiedRejectErrorCode(result.requestId, result.reject_code, result.reject_message, result.error_code, result.signatures);
                     uncertifiedRejectErrorCode.callContext = {
                         canisterId: cid,
                         methodName,
                         httpDetails,
                     };
-                    throw RejectError.fromCode(uncertifiedRejectErrorCode);
+                    throw errors_ts_1.RejectError.fromCode(uncertifiedRejectErrorCode);
                 }
-                case QueryResponseStatus.Replied:
-                    return func.annotations.includes(ACTOR_METHOD_WITH_HTTP_DETAILS)
+                case index_ts_1.QueryResponseStatus.Replied:
+                    return func.annotations.includes(exports.ACTOR_METHOD_WITH_HTTP_DETAILS)
                         ? {
                             httpDetails,
                             result: decodeReturnValue(func.retTypes, result.reply.arg),
@@ -219,15 +223,15 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
                     ...options,
                 }),
             };
-            const agent = options.agent || actor[metadataSymbol].config.agent || HttpAgent.createSync();
+            const agent = options.agent || actor[metadataSymbol].config.agent || index_ts_3.HttpAgent.createSync();
             const { canisterId, effectiveCanisterId, pollingOptions } = {
                 ...DEFAULT_ACTOR_CONFIG,
                 ...actor[metadataSymbol].config,
                 ...options,
             };
-            const cid = Principal.from(canisterId);
-            const ecid = effectiveCanisterId !== undefined ? Principal.from(effectiveCanisterId) : cid;
-            const arg = IDL.encode(func.argTypes, args);
+            const cid = principal_1.Principal.from(canisterId);
+            const ecid = effectiveCanisterId !== undefined ? principal_1.Principal.from(effectiveCanisterId) : cid;
+            const arg = candid_1.IDL.encode(func.argTypes, args);
             const { requestId, response, requestDetails } = await agent.call(cid, {
                 methodName,
                 arg,
@@ -236,51 +240,51 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
             });
             let reply;
             let certificate;
-            if (isV3ResponseBody(response.body)) {
+            if ((0, index_ts_1.isV3ResponseBody)(response.body)) {
                 if (agent.rootKey == null) {
-                    throw ExternalError.fromCode(new MissingRootKeyErrorCode());
+                    throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.MissingRootKeyErrorCode());
                 }
                 const cert = response.body.certificate;
-                certificate = await Certificate.create({
+                certificate = await certificate_ts_1.Certificate.create({
                     certificate: cert,
                     rootKey: agent.rootKey,
                     canisterId: ecid,
                     blsVerify,
                     agent,
                 });
-                const path = [utf8ToBytes('request_status'), requestId];
-                const status = new TextDecoder().decode(lookupResultToBuffer(certificate.lookup_path([...path, 'status'])));
+                const path = [(0, utils_1.utf8ToBytes)('request_status'), requestId];
+                const status = new TextDecoder().decode((0, certificate_ts_1.lookupResultToBuffer)(certificate.lookup_path([...path, 'status'])));
                 switch (status) {
                     case 'replied':
-                        reply = lookupResultToBuffer(certificate.lookup_path([...path, 'reply']));
+                        reply = (0, certificate_ts_1.lookupResultToBuffer)(certificate.lookup_path([...path, 'reply']));
                         break;
                     case 'rejected': {
                         // Find rejection details in the certificate
-                        const rejectCode = new Uint8Array(lookupResultToBuffer(certificate.lookup_path([...path, 'reject_code'])))[0];
-                        const rejectMessage = new TextDecoder().decode(lookupResultToBuffer(certificate.lookup_path([...path, 'reject_message'])));
-                        const error_code_buf = lookupResultToBuffer(certificate.lookup_path([...path, 'error_code']));
+                        const rejectCode = new Uint8Array((0, certificate_ts_1.lookupResultToBuffer)(certificate.lookup_path([...path, 'reject_code'])))[0];
+                        const rejectMessage = new TextDecoder().decode((0, certificate_ts_1.lookupResultToBuffer)(certificate.lookup_path([...path, 'reject_message'])));
+                        const error_code_buf = (0, certificate_ts_1.lookupResultToBuffer)(certificate.lookup_path([...path, 'error_code']));
                         const error_code = error_code_buf
                             ? new TextDecoder().decode(error_code_buf)
                             : undefined;
-                        const certifiedRejectErrorCode = new CertifiedRejectErrorCode(requestId, rejectCode, rejectMessage, error_code);
+                        const certifiedRejectErrorCode = new errors_ts_1.CertifiedRejectErrorCode(requestId, rejectCode, rejectMessage, error_code);
                         certifiedRejectErrorCode.callContext = {
                             canisterId: cid,
                             methodName,
                             httpDetails: response,
                         };
-                        throw RejectError.fromCode(certifiedRejectErrorCode);
+                        throw errors_ts_1.RejectError.fromCode(certifiedRejectErrorCode);
                     }
                 }
             }
-            else if (isV2ResponseBody(response.body)) {
+            else if ((0, index_ts_1.isV2ResponseBody)(response.body)) {
                 const { reject_code, reject_message, error_code } = response.body;
-                const errorCode = new UncertifiedRejectUpdateErrorCode(requestId, reject_code, reject_message, error_code);
+                const errorCode = new errors_ts_1.UncertifiedRejectUpdateErrorCode(requestId, reject_code, reject_message, error_code);
                 errorCode.callContext = {
                     canisterId: cid,
                     methodName,
                     httpDetails: response,
                 };
-                throw RejectError.fromCode(errorCode);
+                throw errors_ts_1.RejectError.fromCode(errorCode);
             }
             // Fall back to polling if we receive an Accepted response code
             if (response.status === 202) {
@@ -289,12 +293,12 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
                     blsVerify,
                 };
                 // Contains the certificate and the reply from the boundary node
-                const response = await pollForResponse(agent, ecid, requestId, pollOptions);
+                const response = await (0, index_ts_2.pollForResponse)(agent, ecid, requestId, pollOptions);
                 certificate = response.certificate;
                 reply = response.reply;
             }
-            const shouldIncludeHttpDetails = func.annotations.includes(ACTOR_METHOD_WITH_HTTP_DETAILS);
-            const shouldIncludeCertificate = func.annotations.includes(ACTOR_METHOD_WITH_CERTIFICATE);
+            const shouldIncludeHttpDetails = func.annotations.includes(exports.ACTOR_METHOD_WITH_HTTP_DETAILS);
+            const shouldIncludeCertificate = func.annotations.includes(exports.ACTOR_METHOD_WITH_CERTIFICATE);
             const httpDetails = { ...response, requestDetails };
             if (reply !== undefined) {
                 if (shouldIncludeHttpDetails && shouldIncludeCertificate) {
@@ -319,13 +323,13 @@ function _createActorMethod(actor, methodName, func, blsVerify) {
                 return decodeReturnValue(func.retTypes, reply);
             }
             else {
-                const errorCode = new UnexpectedErrorCode(`Call was returned undefined. We cannot determine if the call was successful or not. Return types: [${func.retTypes.map(t => t.display()).join(',')}].`);
+                const errorCode = new errors_ts_1.UnexpectedErrorCode(`Call was returned undefined. We cannot determine if the call was successful or not. Return types: [${func.retTypes.map(t => t.display()).join(',')}].`);
                 errorCode.callContext = {
                     canisterId: cid,
                     methodName,
                     httpDetails,
                 };
-                throw UnknownError.fromCode(errorCode);
+                throw errors_ts_1.UnknownError.fromCode(errorCode);
             }
         };
     }

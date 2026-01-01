@@ -1,11 +1,56 @@
-import * as cbor from "./cbor.js";
-import { CertificateHasTooManyDelegationsErrorCode, CertificateNotAuthorizedErrorCode, CertificateTimeErrorCode, CertificateVerificationErrorCode, DerKeyLengthMismatchErrorCode, DerPrefixMismatchErrorCode, ProtocolError, LookupErrorCode, TrustError, UnknownError, HashTreeDecodeErrorCode, UNREACHABLE_ERROR, MalformedLookupFoundValueErrorCode, MissingLookupValueErrorCode, UnexpectedErrorCode, } from "./errors.js";
-import { Principal } from '@dfinity/principal';
-import * as bls from "./utils/bls.js";
-import { decodeTime } from "./utils/leb.js";
-import { bytesToHex, concatBytes, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
-import { uint8Equals } from "./utils/buffer.js";
-import { sha256 } from '@noble/hashes/sha2';
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LookupLabelStatus = exports.LookupSubtreeStatus = exports.LookupPathStatus = exports.Certificate = exports.NodeType = void 0;
+exports.hashTreeToString = hashTreeToString;
+exports.lookupResultToBuffer = lookupResultToBuffer;
+exports.reconstruct = reconstruct;
+exports.domain_sep = domain_sep;
+exports.lookup_path = lookup_path;
+exports.lookup_subtree = lookup_subtree;
+exports.flatten_forks = flatten_forks;
+exports.find_label = find_label;
+exports.check_canister_ranges = check_canister_ranges;
+const cbor = __importStar(require("./cbor.js"));
+const errors_ts_1 = require("./errors.js");
+const principal_1 = require("@dfinity/principal");
+const bls = __importStar(require("./utils/bls.js"));
+const leb_ts_1 = require("./utils/leb.js");
+const utils_1 = require("@noble/hashes/utils");
+const buffer_ts_1 = require("./utils/buffer.js");
+const sha2_1 = require("@noble/hashes/sha2");
 const MINUTES_TO_MSEC = 60 * 1000;
 const HOURS_TO_MINUTES = 60;
 const DAYS_TO_HOURS = 24;
@@ -15,19 +60,19 @@ const DEFAULT_CERTIFICATE_MAX_MINUTES_IN_FUTURE = 5;
 // For now, we don't want to set a strict timeout on the certificate delegation freshness,
 // so we set the max age really far in the past.
 const DEFAULT_CERTIFICATE_DELEGATION_MAX_AGE_IN_MINUTES = 30 * DAYS_TO_MINUTES;
-export var NodeType;
+var NodeType;
 (function (NodeType) {
     NodeType[NodeType["Empty"] = 0] = "Empty";
     NodeType[NodeType["Fork"] = 1] = "Fork";
     NodeType[NodeType["Labeled"] = 2] = "Labeled";
     NodeType[NodeType["Leaf"] = 3] = "Leaf";
     NodeType[NodeType["Pruned"] = 4] = "Pruned";
-})(NodeType || (NodeType = {}));
+})(NodeType || (exports.NodeType = NodeType = {}));
 /**
  * Make a human readable string out of a hash tree.
  * @param tree The hash tree to convert to a string
  */
-export function hashTreeToString(tree) {
+function hashTreeToString(tree) {
     const indent = (s) => s
         .split('\n')
         .map(x => '  ' + x)
@@ -52,7 +97,7 @@ export function hashTreeToString(tree) {
                 return `sub(\n left:\n${indent(left)}\n---\n right:\n${indent(right)}\n)`;
             }
             else {
-                throw UnknownError.fromCode(new HashTreeDecodeErrorCode('Invalid tree structure for fork'));
+                throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Invalid tree structure for fork'));
             }
         }
         case NodeType.Labeled: {
@@ -62,12 +107,12 @@ export function hashTreeToString(tree) {
                 return `label(\n label:\n${indent(label)}\n sub:\n${indent(sub)}\n)`;
             }
             else {
-                throw UnknownError.fromCode(new HashTreeDecodeErrorCode('Invalid tree structure for labeled'));
+                throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Invalid tree structure for labeled'));
             }
         }
         case NodeType.Leaf: {
             if (!tree[1]) {
-                throw UnknownError.fromCode(new HashTreeDecodeErrorCode('Invalid tree structure for leaf'));
+                throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Invalid tree structure for leaf'));
             }
             else if (Array.isArray(tree[1])) {
                 return JSON.stringify(tree[1]);
@@ -76,12 +121,12 @@ export function hashTreeToString(tree) {
         }
         case NodeType.Pruned: {
             if (!tree[1]) {
-                throw UnknownError.fromCode(new HashTreeDecodeErrorCode('Invalid tree structure for pruned'));
+                throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Invalid tree structure for pruned'));
             }
             else if (Array.isArray(tree[1])) {
                 return JSON.stringify(tree[1]);
             }
-            return `pruned(${bytesToHex(new Uint8Array(tree[1]))}`;
+            return `pruned(${(0, utils_1.bytesToHex)(new Uint8Array(tree[1]))}`;
         }
         default: {
             return `unknown(${JSON.stringify(tree[0])})`;
@@ -96,7 +141,7 @@ function isBufferGreaterThan(a, b) {
     }
     return false;
 }
-export class Certificate {
+class Certificate {
     #disableTimeVerification = false;
     #agent = undefined;
     /**
@@ -144,11 +189,11 @@ export class Certificate {
         const derKey = await this._checkDelegationAndGetKey(this.cert.delegation);
         const sig = this.cert.signature;
         const key = extractDER(derKey);
-        const msg = concatBytes(domain_sep('ic-state-root'), rootHash);
+        const msg = (0, utils_1.concatBytes)(domain_sep('ic-state-root'), rootHash);
         const lookupTime = lookupResultToBuffer(this.lookup_path(['time']));
         if (!lookupTime) {
             // Should never happen - time is always present in IC certificates
-            throw ProtocolError.fromCode(new CertificateVerificationErrorCode('Certificate does not contain a time'));
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.CertificateVerificationErrorCode('Certificate does not contain a time'));
         }
         // Certificate time verification checks
         if (!this.#disableTimeVerification) {
@@ -158,7 +203,7 @@ export class Certificate {
             const adjustedNow = now.getTime() + timeDiffMsecs;
             const earliestCertificateTime = adjustedNow - maxAgeInMsec;
             const latestCertificateTime = adjustedNow + DEFAULT_CERTIFICATE_MAX_MINUTES_IN_FUTURE * MINUTES_TO_MSEC;
-            const certTime = decodeTime(lookupTime);
+            const certTime = (0, leb_ts_1.decodeTime)(lookupTime);
             const isCertificateTimePast = certTime.getTime() < earliestCertificateTime;
             const isCertificateTimeFuture = certTime.getTime() > latestCertificateTime;
             if ((isCertificateTimePast || isCertificateTimeFuture) &&
@@ -168,24 +213,24 @@ export class Certificate {
                 return await this.verify();
             }
             if (isCertificateTimePast) {
-                throw TrustError.fromCode(new CertificateTimeErrorCode(this._maxAgeInMinutes, certTime, now, timeDiffMsecs, 'past'));
+                throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateTimeErrorCode(this._maxAgeInMinutes, certTime, now, timeDiffMsecs, 'past'));
             }
             else if (isCertificateTimeFuture) {
                 if (this.#agent?.hasSyncedTime()) {
                     // This case should never happen, and it signals a bug in either the replica or the local system.
-                    throw UnknownError.fromCode(new UnexpectedErrorCode('System time has been synced with the IC network, but certificate is still too far in the future.'));
+                    throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode('System time has been synced with the IC network, but certificate is still too far in the future.'));
                 }
-                throw TrustError.fromCode(new CertificateTimeErrorCode(5, certTime, now, timeDiffMsecs, 'future'));
+                throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateTimeErrorCode(5, certTime, now, timeDiffMsecs, 'future'));
             }
         }
         try {
             const sigVer = await this._blsVerify(key, sig, msg);
             if (!sigVer) {
-                throw TrustError.fromCode(new CertificateVerificationErrorCode('Invalid signature'));
+                throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateVerificationErrorCode('Invalid signature'));
             }
         }
         catch (err) {
-            throw TrustError.fromCode(new CertificateVerificationErrorCode('Signature verification failed', err));
+            throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateVerificationErrorCode('Signature verification failed', err));
         }
     }
     async _checkDelegationAndGetKey(d) {
@@ -202,36 +247,37 @@ export class Certificate {
             agent: this.#agent,
         });
         if (cert.cert.delegation) {
-            throw ProtocolError.fromCode(new CertificateHasTooManyDelegationsErrorCode());
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.CertificateHasTooManyDelegationsErrorCode());
         }
         await cert.verify();
         const subnetIdBytes = d.subnet_id;
-        const subnetId = Principal.fromUint8Array(subnetIdBytes);
+        const subnetId = principal_1.Principal.fromUint8Array(subnetIdBytes);
         const canisterInRange = check_canister_ranges({
             canisterId: this._canisterId,
             subnetId,
             tree: cert.cert.tree,
         });
         if (!canisterInRange) {
-            throw TrustError.fromCode(new CertificateNotAuthorizedErrorCode(this._canisterId, subnetId));
+            throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateNotAuthorizedErrorCode(this._canisterId, subnetId));
         }
         const publicKeyLookup = lookupResultToBuffer(cert.lookup_path(['subnet', subnetIdBytes, 'public_key']));
         if (!publicKeyLookup) {
-            throw TrustError.fromCode(new MissingLookupValueErrorCode(`Could not find subnet key for subnet ID ${subnetId.toText()}`));
+            throw errors_ts_1.TrustError.fromCode(new errors_ts_1.MissingLookupValueErrorCode(`Could not find subnet key for subnet ID ${subnetId.toText()}`));
         }
         return publicKeyLookup;
     }
 }
-const DER_PREFIX = hexToBytes('308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100');
+exports.Certificate = Certificate;
+const DER_PREFIX = (0, utils_1.hexToBytes)('308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100');
 const KEY_LENGTH = 96;
 function extractDER(buf) {
     const expectedLength = DER_PREFIX.byteLength + KEY_LENGTH;
     if (buf.byteLength !== expectedLength) {
-        throw ProtocolError.fromCode(new DerKeyLengthMismatchErrorCode(expectedLength, buf.byteLength));
+        throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.DerKeyLengthMismatchErrorCode(expectedLength, buf.byteLength));
     }
     const prefix = buf.slice(0, DER_PREFIX.byteLength);
-    if (!uint8Equals(prefix, DER_PREFIX)) {
-        throw ProtocolError.fromCode(new DerPrefixMismatchErrorCode(DER_PREFIX, prefix));
+    if (!(0, buffer_ts_1.uint8Equals)(prefix, DER_PREFIX)) {
+        throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.DerPrefixMismatchErrorCode(DER_PREFIX, prefix));
     }
     return buf.slice(DER_PREFIX.byteLength);
 }
@@ -240,7 +286,7 @@ function extractDER(buf) {
  * @param result the result of a lookup
  * @returns {Uint8Array | undefined} the value if the lookup was found, `undefined` otherwise
  */
-export function lookupResultToBuffer(result) {
+function lookupResultToBuffer(result) {
     if (result.status !== LookupPathStatus.Found) {
         return undefined;
     }
@@ -252,20 +298,20 @@ export function lookupResultToBuffer(result) {
 /**
  * @param t The hash tree to reconstruct
  */
-export async function reconstruct(t) {
+async function reconstruct(t) {
     switch (t[0]) {
         case NodeType.Empty:
-            return sha256(domain_sep('ic-hashtree-empty'));
+            return (0, sha2_1.sha256)(domain_sep('ic-hashtree-empty'));
         case NodeType.Pruned:
             return t[1];
         case NodeType.Leaf:
-            return sha256(concatBytes(domain_sep('ic-hashtree-leaf'), t[1]));
+            return (0, sha2_1.sha256)((0, utils_1.concatBytes)(domain_sep('ic-hashtree-leaf'), t[1]));
         case NodeType.Labeled:
-            return sha256(concatBytes(domain_sep('ic-hashtree-labeled'), t[1], await reconstruct(t[2])));
+            return (0, sha2_1.sha256)((0, utils_1.concatBytes)(domain_sep('ic-hashtree-labeled'), t[1], await reconstruct(t[2])));
         case NodeType.Fork:
-            return sha256(concatBytes(domain_sep('ic-hashtree-fork'), await reconstruct(t[1]), await reconstruct(t[2])));
+            return (0, sha2_1.sha256)((0, utils_1.concatBytes)(domain_sep('ic-hashtree-fork'), await reconstruct(t[1]), await reconstruct(t[2])));
         default:
-            throw UNREACHABLE_ERROR;
+            throw errors_ts_1.UNREACHABLE_ERROR;
     }
 }
 /**
@@ -274,42 +320,42 @@ export async function reconstruct(t) {
  * @param s - The input string to encode.
  * @returns A Uint8Array containing the encoded domain separator.
  */
-export function domain_sep(s) {
+function domain_sep(s) {
     const len = new Uint8Array([s.length]);
     const str = new TextEncoder().encode(s);
-    return concatBytes(len, str);
+    return (0, utils_1.concatBytes)(len, str);
 }
 function pathToLabel(path) {
-    return (typeof path[0] === 'string' ? utf8ToBytes(path[0]) : path[0]);
+    return (typeof path[0] === 'string' ? (0, utils_1.utf8ToBytes)(path[0]) : path[0]);
 }
-export var LookupPathStatus;
+var LookupPathStatus;
 (function (LookupPathStatus) {
     LookupPathStatus["Unknown"] = "Unknown";
     LookupPathStatus["Absent"] = "Absent";
     LookupPathStatus["Found"] = "Found";
     LookupPathStatus["Error"] = "Error";
-})(LookupPathStatus || (LookupPathStatus = {}));
-export var LookupSubtreeStatus;
+})(LookupPathStatus || (exports.LookupPathStatus = LookupPathStatus = {}));
+var LookupSubtreeStatus;
 (function (LookupSubtreeStatus) {
     LookupSubtreeStatus["Absent"] = "Absent";
     LookupSubtreeStatus["Unknown"] = "Unknown";
     LookupSubtreeStatus["Found"] = "Found";
-})(LookupSubtreeStatus || (LookupSubtreeStatus = {}));
-export var LookupLabelStatus;
+})(LookupSubtreeStatus || (exports.LookupSubtreeStatus = LookupSubtreeStatus = {}));
+var LookupLabelStatus;
 (function (LookupLabelStatus) {
     LookupLabelStatus["Absent"] = "Absent";
     LookupLabelStatus["Unknown"] = "Unknown";
     LookupLabelStatus["Found"] = "Found";
     LookupLabelStatus["Less"] = "Less";
     LookupLabelStatus["Greater"] = "Greater";
-})(LookupLabelStatus || (LookupLabelStatus = {}));
+})(LookupLabelStatus || (exports.LookupLabelStatus = LookupLabelStatus = {}));
 /**
  * Lookup a path in a tree. If the path is a subtree, use {@link lookup_subtree} instead.
  * @param path the path to look up
  * @param tree the tree to search
  * @returns {LookupResult} the result of the lookup
  */
-export function lookup_path(path, tree) {
+function lookup_path(path, tree) {
     if (path.length === 0) {
         switch (tree[0]) {
             case NodeType.Empty: {
@@ -319,7 +365,7 @@ export function lookup_path(path, tree) {
             }
             case NodeType.Leaf: {
                 if (!tree[1]) {
-                    throw UnknownError.fromCode(new HashTreeDecodeErrorCode('Invalid tree structure for leaf'));
+                    throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Invalid tree structure for leaf'));
                 }
                 if (tree[1] instanceof Uint8Array) {
                     return {
@@ -327,7 +373,7 @@ export function lookup_path(path, tree) {
                         value: tree[1].slice(tree[1].byteOffset, tree[1].byteLength + tree[1].byteOffset),
                     };
                 }
-                throw UNREACHABLE_ERROR;
+                throw errors_ts_1.UNREACHABLE_ERROR;
             }
             case NodeType.Pruned: {
                 return {
@@ -341,7 +387,7 @@ export function lookup_path(path, tree) {
                 };
             }
             default: {
-                throw UNREACHABLE_ERROR;
+                throw errors_ts_1.UNREACHABLE_ERROR;
             }
         }
     }
@@ -364,7 +410,7 @@ export function lookup_path(path, tree) {
             };
         }
         default: {
-            throw UNREACHABLE_ERROR;
+            throw errors_ts_1.UNREACHABLE_ERROR;
         }
     }
 }
@@ -374,7 +420,7 @@ export function lookup_path(path, tree) {
  * @param tree the tree to search
  * @returns {SubtreeLookupResult} the result of the lookup
  */
-export function lookup_subtree(path, tree) {
+function lookup_subtree(path, tree) {
     if (path.length === 0) {
         return {
             status: LookupSubtreeStatus.Found,
@@ -400,7 +446,7 @@ export function lookup_subtree(path, tree) {
             };
         }
         default: {
-            throw UNREACHABLE_ERROR;
+            throw errors_ts_1.UNREACHABLE_ERROR;
         }
     }
 }
@@ -409,7 +455,7 @@ export function lookup_subtree(path, tree) {
  * @param {HashTree} t the tree to flatten
  * @returns {HashTree[]} the flattened tree
  */
-export function flatten_forks(t) {
+function flatten_forks(t) {
     switch (t[0]) {
         case NodeType.Empty:
             return [];
@@ -425,7 +471,7 @@ export function flatten_forks(t) {
  * @param tree the tree to search
  * @returns {LabelLookupResult} the result of the label lookup
  */
-export function find_label(label, tree) {
+function find_label(label, tree) {
     switch (tree[0]) {
         // if we have a labelled node, compare the node's label to the one we are
         // looking for
@@ -439,7 +485,7 @@ export function find_label(label, tree) {
             }
             // if the label we're searching for is equal this node's label, we can
             // stop searching and return the found node
-            if (uint8Equals(label, tree[1])) {
+            if ((0, buffer_ts_1.uint8Equals)(label, tree[1])) {
                 return {
                     status: LookupLabelStatus.Found,
                     value: tree[2],
@@ -517,19 +563,19 @@ export function find_label(label, tree) {
  * @param params.tree the hash tree in which to lookup the subnet's canister ranges
  * @returns {boolean} `true` if the canister is in the range, `false` otherwise
  */
-export function check_canister_ranges(params) {
+function check_canister_ranges(params) {
     const { canisterId, subnetId, tree } = params;
     const rangeLookup = lookup_path(['subnet', subnetId.toUint8Array(), 'canister_ranges'], tree);
     if (rangeLookup.status !== LookupPathStatus.Found) {
-        throw ProtocolError.fromCode(new LookupErrorCode(`Could not find canister ranges for subnet ${subnetId.toText()}`, rangeLookup.status));
+        throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.LookupErrorCode(`Could not find canister ranges for subnet ${subnetId.toText()}`, rangeLookup.status));
     }
     if (!(rangeLookup.value instanceof Uint8Array)) {
-        throw ProtocolError.fromCode(new MalformedLookupFoundValueErrorCode(`Could not find canister ranges for subnet ${subnetId.toText()}`));
+        throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.MalformedLookupFoundValueErrorCode(`Could not find canister ranges for subnet ${subnetId.toText()}`));
     }
     const ranges_arr = cbor.decode(rangeLookup.value);
     const ranges = ranges_arr.map(v => [
-        Principal.fromUint8Array(v[0]),
-        Principal.fromUint8Array(v[1]),
+        principal_1.Principal.fromUint8Array(v[0]),
+        principal_1.Principal.fromUint8Array(v[1]),
     ]);
     const canisterInRange = ranges.some(r => r[0].ltEq(canisterId) && r[1].gtEq(canisterId));
     return canisterInRange;

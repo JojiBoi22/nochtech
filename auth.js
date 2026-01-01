@@ -1,18 +1,22 @@
-import { Principal } from '@dfinity/principal';
-import { requestIdOf } from "./request_id.js";
-import { bytesToHex, concatBytes } from '@noble/hashes/utils';
-import { IC_REQUEST_DOMAIN_SEPARATOR } from "./constants.js";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AnonymousIdentity = exports.SignIdentity = void 0;
+exports.createIdentityDescriptor = createIdentityDescriptor;
+const principal_1 = require("@dfinity/principal");
+const request_id_ts_1 = require("./request_id.js");
+const utils_1 = require("@noble/hashes/utils");
+const constants_ts_1 = require("./constants.js");
 /**
  * An Identity that can sign blobs.
  */
-export class SignIdentity {
+class SignIdentity {
     /**
      * Get the principal represented by this identity. Normally should be a
      * `Principal.selfAuthenticating()`.
      */
     getPrincipal() {
         if (!this._principal) {
-            this._principal = Principal.selfAuthenticating(new Uint8Array(this.getPublicKey().toDer()));
+            this._principal = principal_1.Principal.selfAuthenticating(new Uint8Array(this.getPublicKey().toDer()));
         }
         return this._principal;
     }
@@ -24,20 +28,21 @@ export class SignIdentity {
      */
     async transformRequest(request) {
         const { body, ...fields } = request;
-        const requestId = requestIdOf(body);
+        const requestId = (0, request_id_ts_1.requestIdOf)(body);
         return {
             ...fields,
             body: {
                 content: body,
                 sender_pubkey: this.getPublicKey().toDer(),
-                sender_sig: await this.sign(concatBytes(IC_REQUEST_DOMAIN_SEPARATOR, requestId)),
+                sender_sig: await this.sign((0, utils_1.concatBytes)(constants_ts_1.IC_REQUEST_DOMAIN_SEPARATOR, requestId)),
             },
         };
     }
 }
-export class AnonymousIdentity {
+exports.SignIdentity = SignIdentity;
+class AnonymousIdentity {
     getPrincipal() {
-        return Principal.anonymous();
+        return principal_1.Principal.anonymous();
     }
     async transformRequest(request) {
         return {
@@ -46,13 +51,14 @@ export class AnonymousIdentity {
         };
     }
 }
+exports.AnonymousIdentity = AnonymousIdentity;
 /**
  * Create an IdentityDescriptor from a @dfinity/identity Identity
  * @param identity - identity describe in returned descriptor
  */
-export function createIdentityDescriptor(identity) {
+function createIdentityDescriptor(identity) {
     const identityIndicator = 'getPublicKey' in identity
-        ? { type: 'PublicKeyIdentity', publicKey: bytesToHex(identity.getPublicKey().toDer()) }
+        ? { type: 'PublicKeyIdentity', publicKey: (0, utils_1.bytesToHex)(identity.getPublicKey().toDer()) }
         : { type: 'AnonymousIdentity' };
     return identityIndicator;
 }

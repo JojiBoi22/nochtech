@@ -1,12 +1,51 @@
-import { Certificate, lookupResultToBuffer, } from "../certificate.js";
-import { CertifiedRejectErrorCode, ExternalError, InputError, InvalidReadStateRequestErrorCode, MissingRootKeyErrorCode, RejectError, RequestStatusDoneNoReplyErrorCode, UnknownError, UNREACHABLE_ERROR, } from "../errors.js";
-export * as strategy from "./strategy.js";
-import { defaultStrategy } from "./strategy.js";
-import { ReadRequestType } from "../agent/http/types.js";
-import { RequestStatusResponseStatus } from "../agent/index.js";
-import { utf8ToBytes } from '@noble/hashes/utils';
-export { defaultStrategy } from "./strategy.js";
-export const DEFAULT_POLLING_OPTIONS = {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DEFAULT_POLLING_OPTIONS = exports.defaultStrategy = exports.strategy = void 0;
+exports.pollForResponse = pollForResponse;
+exports.constructRequest = constructRequest;
+const certificate_ts_1 = require("../certificate.js");
+const errors_ts_1 = require("../errors.js");
+exports.strategy = __importStar(require("./strategy.js"));
+const strategy_ts_1 = require("./strategy.js");
+const types_ts_1 = require("../agent/http/types.js");
+const index_ts_1 = require("../agent/index.js");
+const utils_1 = require("@noble/hashes/utils");
+var strategy_ts_2 = require("./strategy.js");
+Object.defineProperty(exports, "defaultStrategy", { enumerable: true, get: function () { return strategy_ts_2.defaultStrategy; } });
+exports.DEFAULT_POLLING_OPTIONS = {
     preSignReadStateRequest: false,
 };
 /**
@@ -31,7 +70,7 @@ function isSignedReadStateRequestWithExpiry(value) {
     return (isObjectWithProperty(value, 'body') &&
         isObjectWithProperty(value.body, 'content') &&
         value.body.content.request_type ===
-            ReadRequestType.ReadState &&
+            types_ts_1.ReadRequestType.ReadState &&
         isObjectWithProperty(value.body.content, 'ingress_expiry') &&
         typeof value.body.content.ingress_expiry === 'object' &&
         value.body.content.ingress_expiry !== null &&
@@ -45,8 +84,8 @@ function isSignedReadStateRequestWithExpiry(value) {
  * @param requestId The Request ID to poll status for.
  * @param options polling options to control behavior
  */
-export async function pollForResponse(agent, canisterId, requestId, options = {}) {
-    const path = [utf8ToBytes('request_status'), requestId];
+async function pollForResponse(agent, canisterId, requestId, options = {}) {
+    const path = [(0, utils_1.utf8ToBytes)('request_status'), requestId];
     let state;
     let currentRequest;
     const preSignReadStateRequest = options.preSignReadStateRequest ?? false;
@@ -64,36 +103,36 @@ export async function pollForResponse(agent, canisterId, requestId, options = {}
         state = await agent.readState(canisterId, { paths: [path] });
     }
     if (agent.rootKey == null) {
-        throw ExternalError.fromCode(new MissingRootKeyErrorCode());
+        throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.MissingRootKeyErrorCode());
     }
-    const cert = await Certificate.create({
+    const cert = await certificate_ts_1.Certificate.create({
         certificate: state.certificate,
         rootKey: agent.rootKey,
         canisterId: canisterId,
         blsVerify: options.blsVerify,
         agent,
     });
-    const maybeBuf = lookupResultToBuffer(cert.lookup_path([...path, utf8ToBytes('status')]));
+    const maybeBuf = (0, certificate_ts_1.lookupResultToBuffer)(cert.lookup_path([...path, (0, utils_1.utf8ToBytes)('status')]));
     let status;
     if (typeof maybeBuf === 'undefined') {
         // Missing requestId means we need to wait
-        status = RequestStatusResponseStatus.Unknown;
+        status = index_ts_1.RequestStatusResponseStatus.Unknown;
     }
     else {
         status = new TextDecoder().decode(maybeBuf);
     }
     switch (status) {
-        case RequestStatusResponseStatus.Replied: {
+        case index_ts_1.RequestStatusResponseStatus.Replied: {
             return {
-                reply: lookupResultToBuffer(cert.lookup_path([...path, 'reply'])),
+                reply: (0, certificate_ts_1.lookupResultToBuffer)(cert.lookup_path([...path, 'reply'])),
                 certificate: cert,
             };
         }
-        case RequestStatusResponseStatus.Received:
-        case RequestStatusResponseStatus.Unknown:
-        case RequestStatusResponseStatus.Processing: {
+        case index_ts_1.RequestStatusResponseStatus.Received:
+        case index_ts_1.RequestStatusResponseStatus.Unknown:
+        case index_ts_1.RequestStatusResponseStatus.Processing: {
             // Execute the polling strategy, then retry.
-            const strategy = options.strategy ?? defaultStrategy();
+            const strategy = options.strategy ?? (0, strategy_ts_1.defaultStrategy)();
             await strategy(canisterId, requestId, status);
             return pollForResponse(agent, canisterId, requestId, {
                 ...options,
@@ -102,19 +141,19 @@ export async function pollForResponse(agent, canisterId, requestId, options = {}
                 request: currentRequest,
             });
         }
-        case RequestStatusResponseStatus.Rejected: {
-            const rejectCode = new Uint8Array(lookupResultToBuffer(cert.lookup_path([...path, 'reject_code'])))[0];
-            const rejectMessage = new TextDecoder().decode(lookupResultToBuffer(cert.lookup_path([...path, 'reject_message'])));
-            const errorCodeBuf = lookupResultToBuffer(cert.lookup_path([...path, 'error_code']));
+        case index_ts_1.RequestStatusResponseStatus.Rejected: {
+            const rejectCode = new Uint8Array((0, certificate_ts_1.lookupResultToBuffer)(cert.lookup_path([...path, 'reject_code'])))[0];
+            const rejectMessage = new TextDecoder().decode((0, certificate_ts_1.lookupResultToBuffer)(cert.lookup_path([...path, 'reject_message'])));
+            const errorCodeBuf = (0, certificate_ts_1.lookupResultToBuffer)(cert.lookup_path([...path, 'error_code']));
             const errorCode = errorCodeBuf ? new TextDecoder().decode(errorCodeBuf) : undefined;
-            throw RejectError.fromCode(new CertifiedRejectErrorCode(requestId, rejectCode, rejectMessage, errorCode));
+            throw errors_ts_1.RejectError.fromCode(new errors_ts_1.CertifiedRejectErrorCode(requestId, rejectCode, rejectMessage, errorCode));
         }
-        case RequestStatusResponseStatus.Done:
+        case index_ts_1.RequestStatusResponseStatus.Done:
             // This is _technically_ not an error, but we still didn't see the `Replied` status so
             // we don't know the result and cannot decode it.
-            throw UnknownError.fromCode(new RequestStatusDoneNoReplyErrorCode(requestId));
+            throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.RequestStatusDoneNoReplyErrorCode(requestId));
     }
-    throw UNREACHABLE_ERROR;
+    throw errors_ts_1.UNREACHABLE_ERROR;
 }
 // Determine if we should reuse the read state request or create a new one
 // based on the options provided.
@@ -128,7 +167,7 @@ export async function pollForResponse(agent, canisterId, requestId, options = {}
  * @param options.pollingOptions The options to use for creating the request.
  * @returns The read state request.
  */
-export async function constructRequest(options) {
+async function constructRequest(options) {
     const { paths, agent, pollingOptions } = options;
     if (pollingOptions.request && isSignedReadStateRequestWithExpiry(pollingOptions.request)) {
         return pollingOptions.request;
@@ -137,7 +176,7 @@ export async function constructRequest(options) {
         paths,
     }, undefined);
     if (!isSignedReadStateRequestWithExpiry(request)) {
-        throw InputError.fromCode(new InvalidReadStateRequestErrorCode(request));
+        throw errors_ts_1.InputError.fromCode(new errors_ts_1.InvalidReadStateRequestErrorCode(request));
     }
     return request;
 }

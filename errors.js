@@ -1,5 +1,9 @@
-import { bytesToHex } from '@noble/hashes/utils';
-export var ErrorKindEnum;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.InvalidRootKeyErrorCode = exports.ExpiryJsonDeserializeErrorCode = exports.InvalidReadStateRequestErrorCode = exports.MissingCanisterIdErrorCode = exports.HttpFetchErrorCode = exports.HttpV3ApiNotSupportedErrorCode = exports.HttpErrorCode = exports.HashTreeDecodeErrorCode = exports.UnexpectedErrorCode = exports.QuerySignatureVerificationFailedErrorCode = exports.MalformedPublicKeyErrorCode = exports.MissingSignatureErrorCode = exports.MalformedSignatureErrorCode = exports.CreateHttpAgentErrorCode = exports.IngressExpiryInvalidErrorCode = exports.IdentityInvalidErrorCode = exports.HttpDefaultFetchErrorCode = exports.HashValueErrorCode = exports.MissingRootKeyErrorCode = exports.RequestStatusDoneNoReplyErrorCode = exports.UncertifiedRejectUpdateErrorCode = exports.UncertifiedRejectErrorCode = exports.CertifiedRejectErrorCode = exports.CertificateOutdatedErrorCode = exports.TimeoutWaitingForResponseErrorCode = exports.HexDecodeErrorCode = exports.CborEncodeErrorCode = exports.CborDecodeErrorCode = exports.DerEncodeErrorCode = exports.DerDecodeErrorCode = exports.DerDecodeLengthMismatchErrorCode = exports.DerPrefixMismatchErrorCode = exports.DerKeyLengthMismatchErrorCode = exports.MissingLookupValueErrorCode = exports.MalformedLookupFoundValueErrorCode = exports.LookupErrorCode = exports.CertificateNotAuthorizedErrorCode = exports.CertificateHasTooManyDelegationsErrorCode = exports.CertificateTimeErrorCode = exports.CertificateVerificationErrorCode = exports.UnknownError = exports.InputError = exports.LimitError = exports.ExternalError = exports.TransportError = exports.RejectError = exports.ProtocolError = exports.TrustError = exports.AgentError = exports.ErrorKindEnum = void 0;
+exports.UNREACHABLE_ERROR = exports.EmptyCookieErrorCode = exports.MissingCookieErrorCode = void 0;
+const utils_1 = require("@noble/hashes/utils");
+var ErrorKindEnum;
 (function (ErrorKindEnum) {
     ErrorKindEnum["Trust"] = "Trust";
     ErrorKindEnum["Protocol"] = "Protocol";
@@ -9,7 +13,7 @@ export var ErrorKindEnum;
     ErrorKindEnum["Limit"] = "Limit";
     ErrorKindEnum["Input"] = "Input";
     ErrorKindEnum["Unknown"] = "Unknown";
-})(ErrorKindEnum || (ErrorKindEnum = {}));
+})(ErrorKindEnum || (exports.ErrorKindEnum = ErrorKindEnum = {}));
 class ErrorCode {
     constructor(isCertified = false) {
         this.isCertified = isCertified;
@@ -19,9 +23,9 @@ class ErrorCode {
         if (this.requestContext) {
             errorMessage +=
                 `\nRequest context:\n` +
-                    `  Request ID (hex): ${this.requestContext.requestId ? bytesToHex(this.requestContext.requestId) : 'undefined'}\n` +
-                    `  Sender pubkey (hex): ${bytesToHex(this.requestContext.senderPubKey)}\n` +
-                    `  Sender signature (hex): ${bytesToHex(this.requestContext.senderSignature)}\n` +
+                    `  Request ID (hex): ${this.requestContext.requestId ? (0, utils_1.bytesToHex)(this.requestContext.requestId) : 'undefined'}\n` +
+                    `  Sender pubkey (hex): ${(0, utils_1.bytesToHex)(this.requestContext.senderPubKey)}\n` +
+                    `  Sender signature (hex): ${(0, utils_1.bytesToHex)(this.requestContext.senderSignature)}\n` +
                     `  Ingress expiry: ${this.requestContext.ingressExpiry.toString()}`;
         }
         if (this.callContext) {
@@ -40,7 +44,7 @@ class ErrorCode {
  *
  * To know if the error is certified, use the `isCertified` getter.
  */
-export class AgentError extends Error {
+class AgentError extends Error {
     get code() {
         return this.cause.code;
     }
@@ -73,68 +77,77 @@ export class AgentError extends Error {
         return `${this.name} (${this.kind}): ${this.message}`;
     }
 }
+exports.AgentError = AgentError;
 class ErrorKind extends AgentError {
     static fromCode(code) {
         return new this(code);
     }
 }
-export class TrustError extends ErrorKind {
+class TrustError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Trust);
         this.name = 'TrustError';
         Object.setPrototypeOf(this, TrustError.prototype);
     }
 }
-export class ProtocolError extends ErrorKind {
+exports.TrustError = TrustError;
+class ProtocolError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Protocol);
         this.name = 'ProtocolError';
         Object.setPrototypeOf(this, ProtocolError.prototype);
     }
 }
-export class RejectError extends ErrorKind {
+exports.ProtocolError = ProtocolError;
+class RejectError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Reject);
         this.name = 'RejectError';
         Object.setPrototypeOf(this, RejectError.prototype);
     }
 }
-export class TransportError extends ErrorKind {
+exports.RejectError = RejectError;
+class TransportError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Transport);
         this.name = 'TransportError';
         Object.setPrototypeOf(this, TransportError.prototype);
     }
 }
-export class ExternalError extends ErrorKind {
+exports.TransportError = TransportError;
+class ExternalError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.External);
         this.name = 'ExternalError';
         Object.setPrototypeOf(this, ExternalError.prototype);
     }
 }
-export class LimitError extends ErrorKind {
+exports.ExternalError = ExternalError;
+class LimitError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Limit);
         this.name = 'LimitError';
         Object.setPrototypeOf(this, LimitError.prototype);
     }
 }
-export class InputError extends ErrorKind {
+exports.LimitError = LimitError;
+class InputError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Input);
         this.name = 'InputError';
         Object.setPrototypeOf(this, InputError.prototype);
     }
 }
-export class UnknownError extends ErrorKind {
+exports.InputError = InputError;
+class UnknownError extends ErrorKind {
     constructor(code) {
         super(code, ErrorKindEnum.Unknown);
         this.name = 'UnknownError';
         Object.setPrototypeOf(this, UnknownError.prototype);
     }
 }
-export class CertificateVerificationErrorCode extends ErrorCode {
+exports.UnknownError = UnknownError;
+class CertificateVerificationErrorCode extends ErrorCode {
     constructor(reason, error) {
         super();
         this.reason = reason;
@@ -150,7 +163,8 @@ export class CertificateVerificationErrorCode extends ErrorCode {
         return `Certificate verification error: "${errorMessage}"`;
     }
 }
-export class CertificateTimeErrorCode extends ErrorCode {
+exports.CertificateVerificationErrorCode = CertificateVerificationErrorCode;
+class CertificateTimeErrorCode extends ErrorCode {
     constructor(maxAgeInMinutes, certificateTime, currentTime, timeDiffMsecs, ageType) {
         super();
         this.maxAgeInMinutes = maxAgeInMinutes;
@@ -165,7 +179,8 @@ export class CertificateTimeErrorCode extends ErrorCode {
         return `Certificate is signed more than ${this.maxAgeInMinutes} minutes in the ${this.ageType}. Certificate time: ${this.certificateTime.toISOString()} Current time: ${this.currentTime.toISOString()} Clock drift: ${this.timeDiffMsecs}ms`;
     }
 }
-export class CertificateHasTooManyDelegationsErrorCode extends ErrorCode {
+exports.CertificateTimeErrorCode = CertificateTimeErrorCode;
+class CertificateHasTooManyDelegationsErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'CertificateHasTooManyDelegationsErrorCode';
@@ -175,7 +190,8 @@ export class CertificateHasTooManyDelegationsErrorCode extends ErrorCode {
         return 'Certificate has too many delegations';
     }
 }
-export class CertificateNotAuthorizedErrorCode extends ErrorCode {
+exports.CertificateHasTooManyDelegationsErrorCode = CertificateHasTooManyDelegationsErrorCode;
+class CertificateNotAuthorizedErrorCode extends ErrorCode {
     constructor(canisterId, subnetId) {
         super();
         this.canisterId = canisterId;
@@ -187,7 +203,8 @@ export class CertificateNotAuthorizedErrorCode extends ErrorCode {
         return `The certificate contains a delegation that does not include the canister ${this.canisterId.toText()} in the canister_ranges field. Subnet ID: ${this.subnetId.toText()}`;
     }
 }
-export class LookupErrorCode extends ErrorCode {
+exports.CertificateNotAuthorizedErrorCode = CertificateNotAuthorizedErrorCode;
+class LookupErrorCode extends ErrorCode {
     constructor(message, lookupStatus) {
         super();
         this.message = message;
@@ -199,7 +216,8 @@ export class LookupErrorCode extends ErrorCode {
         return `${this.message}. Lookup status: ${this.lookupStatus}`;
     }
 }
-export class MalformedLookupFoundValueErrorCode extends ErrorCode {
+exports.LookupErrorCode = LookupErrorCode;
+class MalformedLookupFoundValueErrorCode extends ErrorCode {
     constructor(message) {
         super();
         this.message = message;
@@ -210,7 +228,8 @@ export class MalformedLookupFoundValueErrorCode extends ErrorCode {
         return this.message;
     }
 }
-export class MissingLookupValueErrorCode extends ErrorCode {
+exports.MalformedLookupFoundValueErrorCode = MalformedLookupFoundValueErrorCode;
+class MissingLookupValueErrorCode extends ErrorCode {
     constructor(message) {
         super();
         this.message = message;
@@ -221,7 +240,8 @@ export class MissingLookupValueErrorCode extends ErrorCode {
         return this.message;
     }
 }
-export class DerKeyLengthMismatchErrorCode extends ErrorCode {
+exports.MissingLookupValueErrorCode = MissingLookupValueErrorCode;
+class DerKeyLengthMismatchErrorCode extends ErrorCode {
     constructor(expectedLength, actualLength) {
         super();
         this.expectedLength = expectedLength;
@@ -233,7 +253,8 @@ export class DerKeyLengthMismatchErrorCode extends ErrorCode {
         return `BLS DER-encoded public key must be ${this.expectedLength} bytes long, but is ${this.actualLength} bytes long`;
     }
 }
-export class DerPrefixMismatchErrorCode extends ErrorCode {
+exports.DerKeyLengthMismatchErrorCode = DerKeyLengthMismatchErrorCode;
+class DerPrefixMismatchErrorCode extends ErrorCode {
     constructor(expectedPrefix, actualPrefix) {
         super();
         this.expectedPrefix = expectedPrefix;
@@ -242,10 +263,11 @@ export class DerPrefixMismatchErrorCode extends ErrorCode {
         Object.setPrototypeOf(this, DerPrefixMismatchErrorCode.prototype);
     }
     toErrorMessage() {
-        return `BLS DER-encoded public key is invalid. Expected the following prefix: ${bytesToHex(this.expectedPrefix)}, but got ${bytesToHex(this.actualPrefix)}`;
+        return `BLS DER-encoded public key is invalid. Expected the following prefix: ${(0, utils_1.bytesToHex)(this.expectedPrefix)}, but got ${(0, utils_1.bytesToHex)(this.actualPrefix)}`;
     }
 }
-export class DerDecodeLengthMismatchErrorCode extends ErrorCode {
+exports.DerPrefixMismatchErrorCode = DerPrefixMismatchErrorCode;
+class DerDecodeLengthMismatchErrorCode extends ErrorCode {
     constructor(expectedLength, actualLength) {
         super();
         this.expectedLength = expectedLength;
@@ -257,7 +279,8 @@ export class DerDecodeLengthMismatchErrorCode extends ErrorCode {
         return `DER payload mismatch: Expected length ${this.expectedLength}, actual length: ${this.actualLength}`;
     }
 }
-export class DerDecodeErrorCode extends ErrorCode {
+exports.DerDecodeLengthMismatchErrorCode = DerDecodeLengthMismatchErrorCode;
+class DerDecodeErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -268,7 +291,8 @@ export class DerDecodeErrorCode extends ErrorCode {
         return `Failed to decode DER: ${this.error}`;
     }
 }
-export class DerEncodeErrorCode extends ErrorCode {
+exports.DerDecodeErrorCode = DerDecodeErrorCode;
+class DerEncodeErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -279,7 +303,8 @@ export class DerEncodeErrorCode extends ErrorCode {
         return `Failed to encode DER: ${this.error}`;
     }
 }
-export class CborDecodeErrorCode extends ErrorCode {
+exports.DerEncodeErrorCode = DerEncodeErrorCode;
+class CborDecodeErrorCode extends ErrorCode {
     constructor(error, input) {
         super();
         this.error = error;
@@ -288,10 +313,11 @@ export class CborDecodeErrorCode extends ErrorCode {
         Object.setPrototypeOf(this, CborDecodeErrorCode.prototype);
     }
     toErrorMessage() {
-        return `Failed to decode CBOR: ${formatUnknownError(this.error)}, input: ${bytesToHex(this.input)}`;
+        return `Failed to decode CBOR: ${formatUnknownError(this.error)}, input: ${(0, utils_1.bytesToHex)(this.input)}`;
     }
 }
-export class CborEncodeErrorCode extends ErrorCode {
+exports.CborDecodeErrorCode = CborDecodeErrorCode;
+class CborEncodeErrorCode extends ErrorCode {
     constructor(error, value) {
         super();
         this.error = error;
@@ -303,7 +329,8 @@ export class CborEncodeErrorCode extends ErrorCode {
         return `Failed to encode CBOR: ${formatUnknownError(this.error)}, input: ${this.value}`;
     }
 }
-export class HexDecodeErrorCode extends ErrorCode {
+exports.CborEncodeErrorCode = CborEncodeErrorCode;
+class HexDecodeErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -314,7 +341,8 @@ export class HexDecodeErrorCode extends ErrorCode {
         return `Failed to decode hex: ${this.error}`;
     }
 }
-export class TimeoutWaitingForResponseErrorCode extends ErrorCode {
+exports.HexDecodeErrorCode = HexDecodeErrorCode;
+class TimeoutWaitingForResponseErrorCode extends ErrorCode {
     constructor(message, requestId, status) {
         super();
         this.message = message;
@@ -326,7 +354,7 @@ export class TimeoutWaitingForResponseErrorCode extends ErrorCode {
     toErrorMessage() {
         let errorMessage = `${this.message}\n`;
         if (this.requestId) {
-            errorMessage += `  Request ID: ${bytesToHex(this.requestId)}\n`;
+            errorMessage += `  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n`;
         }
         if (this.status) {
             errorMessage += `  Request status: ${this.status}\n`;
@@ -334,7 +362,8 @@ export class TimeoutWaitingForResponseErrorCode extends ErrorCode {
         return errorMessage;
     }
 }
-export class CertificateOutdatedErrorCode extends ErrorCode {
+exports.TimeoutWaitingForResponseErrorCode = TimeoutWaitingForResponseErrorCode;
+class CertificateOutdatedErrorCode extends ErrorCode {
     constructor(maxIngressExpiryInMinutes, requestId, retryTimes) {
         super();
         this.maxIngressExpiryInMinutes = maxIngressExpiryInMinutes;
@@ -344,14 +373,15 @@ export class CertificateOutdatedErrorCode extends ErrorCode {
         Object.setPrototypeOf(this, CertificateOutdatedErrorCode.prototype);
     }
     toErrorMessage() {
-        let errorMessage = `Certificate is stale (over ${this.maxIngressExpiryInMinutes} minutes). Is the computer's clock synchronized?\n  Request ID: ${bytesToHex(this.requestId)}\n`;
+        let errorMessage = `Certificate is stale (over ${this.maxIngressExpiryInMinutes} minutes). Is the computer's clock synchronized?\n  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n`;
         if (this.retryTimes !== undefined) {
             errorMessage += `  Retried ${this.retryTimes} times.`;
         }
         return errorMessage;
     }
 }
-export class CertifiedRejectErrorCode extends ErrorCode {
+exports.CertificateOutdatedErrorCode = CertificateOutdatedErrorCode;
+class CertifiedRejectErrorCode extends ErrorCode {
     constructor(requestId, rejectCode, rejectMessage, rejectErrorCode) {
         super(true);
         this.requestId = requestId;
@@ -363,13 +393,14 @@ export class CertifiedRejectErrorCode extends ErrorCode {
     }
     toErrorMessage() {
         return (`The replica returned a rejection error:\n` +
-            `  Request ID: ${bytesToHex(this.requestId)}\n` +
+            `  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n` +
             `  Reject code: ${this.rejectCode}\n` +
             `  Reject text: ${this.rejectMessage}\n` +
             `  Error code: ${this.rejectErrorCode}\n`);
     }
 }
-export class UncertifiedRejectErrorCode extends ErrorCode {
+exports.CertifiedRejectErrorCode = CertifiedRejectErrorCode;
+class UncertifiedRejectErrorCode extends ErrorCode {
     constructor(requestId, rejectCode, rejectMessage, rejectErrorCode, signatures) {
         super();
         this.requestId = requestId;
@@ -382,13 +413,14 @@ export class UncertifiedRejectErrorCode extends ErrorCode {
     }
     toErrorMessage() {
         return (`The replica returned a rejection error:\n` +
-            `  Request ID: ${bytesToHex(this.requestId)}\n` +
+            `  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n` +
             `  Reject code: ${this.rejectCode}\n` +
             `  Reject text: ${this.rejectMessage}\n` +
             `  Error code: ${this.rejectErrorCode}\n`);
     }
 }
-export class UncertifiedRejectUpdateErrorCode extends ErrorCode {
+exports.UncertifiedRejectErrorCode = UncertifiedRejectErrorCode;
+class UncertifiedRejectUpdateErrorCode extends ErrorCode {
     constructor(requestId, rejectCode, rejectMessage, rejectErrorCode) {
         super();
         this.requestId = requestId;
@@ -400,13 +432,14 @@ export class UncertifiedRejectUpdateErrorCode extends ErrorCode {
     }
     toErrorMessage() {
         return (`The replica returned a rejection error:\n` +
-            `  Request ID: ${bytesToHex(this.requestId)}\n` +
+            `  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n` +
             `  Reject code: ${this.rejectCode}\n` +
             `  Reject text: ${this.rejectMessage}\n` +
             `  Error code: ${this.rejectErrorCode}\n`);
     }
 }
-export class RequestStatusDoneNoReplyErrorCode extends ErrorCode {
+exports.UncertifiedRejectUpdateErrorCode = UncertifiedRejectUpdateErrorCode;
+class RequestStatusDoneNoReplyErrorCode extends ErrorCode {
     constructor(requestId) {
         super();
         this.requestId = requestId;
@@ -415,10 +448,11 @@ export class RequestStatusDoneNoReplyErrorCode extends ErrorCode {
     }
     toErrorMessage() {
         return (`Call was marked as done but we never saw the reply:\n` +
-            `  Request ID: ${bytesToHex(this.requestId)}\n`);
+            `  Request ID: ${(0, utils_1.bytesToHex)(this.requestId)}\n`);
     }
 }
-export class MissingRootKeyErrorCode extends ErrorCode {
+exports.RequestStatusDoneNoReplyErrorCode = RequestStatusDoneNoReplyErrorCode;
+class MissingRootKeyErrorCode extends ErrorCode {
     constructor(shouldFetchRootKey) {
         super();
         this.shouldFetchRootKey = shouldFetchRootKey;
@@ -432,7 +466,8 @@ export class MissingRootKeyErrorCode extends ErrorCode {
         return `Agent is missing root key and the shouldFetchRootKey value is set to ${this.shouldFetchRootKey}. The root key should only be unknown if you are in local development. Otherwise you should avoid fetching and use the default IC Root Key or the known root key of your environment.`;
     }
 }
-export class HashValueErrorCode extends ErrorCode {
+exports.MissingRootKeyErrorCode = MissingRootKeyErrorCode;
+class HashValueErrorCode extends ErrorCode {
     constructor(value) {
         super();
         this.value = value;
@@ -443,7 +478,8 @@ export class HashValueErrorCode extends ErrorCode {
         return `Attempt to hash a value of unsupported type: ${this.value}`;
     }
 }
-export class HttpDefaultFetchErrorCode extends ErrorCode {
+exports.HashValueErrorCode = HashValueErrorCode;
+class HttpDefaultFetchErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -454,7 +490,8 @@ export class HttpDefaultFetchErrorCode extends ErrorCode {
         return this.error;
     }
 }
-export class IdentityInvalidErrorCode extends ErrorCode {
+exports.HttpDefaultFetchErrorCode = HttpDefaultFetchErrorCode;
+class IdentityInvalidErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'IdentityInvalidErrorCode';
@@ -464,7 +501,8 @@ export class IdentityInvalidErrorCode extends ErrorCode {
         return "This identity has expired due this application's security policy. Please refresh your authentication.";
     }
 }
-export class IngressExpiryInvalidErrorCode extends ErrorCode {
+exports.IdentityInvalidErrorCode = IdentityInvalidErrorCode;
+class IngressExpiryInvalidErrorCode extends ErrorCode {
     constructor(message, providedIngressExpiryInMinutes) {
         super();
         this.message = message;
@@ -476,7 +514,8 @@ export class IngressExpiryInvalidErrorCode extends ErrorCode {
         return `${this.message}. Provided ingress expiry time is ${this.providedIngressExpiryInMinutes} minutes.`;
     }
 }
-export class CreateHttpAgentErrorCode extends ErrorCode {
+exports.IngressExpiryInvalidErrorCode = IngressExpiryInvalidErrorCode;
+class CreateHttpAgentErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'CreateHttpAgentErrorCode';
@@ -486,7 +525,8 @@ export class CreateHttpAgentErrorCode extends ErrorCode {
         return 'Failed to create agent from provided agent';
     }
 }
-export class MalformedSignatureErrorCode extends ErrorCode {
+exports.CreateHttpAgentErrorCode = CreateHttpAgentErrorCode;
+class MalformedSignatureErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -497,7 +537,8 @@ export class MalformedSignatureErrorCode extends ErrorCode {
         return `Query response contained a malformed signature: ${this.error}`;
     }
 }
-export class MissingSignatureErrorCode extends ErrorCode {
+exports.MalformedSignatureErrorCode = MalformedSignatureErrorCode;
+class MissingSignatureErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'MissingSignatureErrorCode';
@@ -507,7 +548,8 @@ export class MissingSignatureErrorCode extends ErrorCode {
         return 'Query response did not contain any node signatures';
     }
 }
-export class MalformedPublicKeyErrorCode extends ErrorCode {
+exports.MissingSignatureErrorCode = MissingSignatureErrorCode;
+class MalformedPublicKeyErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'MalformedPublicKeyErrorCode';
@@ -517,7 +559,8 @@ export class MalformedPublicKeyErrorCode extends ErrorCode {
         return 'Read state response contained a malformed public key';
     }
 }
-export class QuerySignatureVerificationFailedErrorCode extends ErrorCode {
+exports.MalformedPublicKeyErrorCode = MalformedPublicKeyErrorCode;
+class QuerySignatureVerificationFailedErrorCode extends ErrorCode {
     constructor(nodeId) {
         super();
         this.nodeId = nodeId;
@@ -528,7 +571,8 @@ export class QuerySignatureVerificationFailedErrorCode extends ErrorCode {
         return `Query signature verification failed. Node ID: ${this.nodeId}`;
     }
 }
-export class UnexpectedErrorCode extends ErrorCode {
+exports.QuerySignatureVerificationFailedErrorCode = QuerySignatureVerificationFailedErrorCode;
+class UnexpectedErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -539,7 +583,8 @@ export class UnexpectedErrorCode extends ErrorCode {
         return `Unexpected error: ${formatUnknownError(this.error)}`;
     }
 }
-export class HashTreeDecodeErrorCode extends ErrorCode {
+exports.UnexpectedErrorCode = UnexpectedErrorCode;
+class HashTreeDecodeErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -550,7 +595,8 @@ export class HashTreeDecodeErrorCode extends ErrorCode {
         return `Failed to decode certificate: ${this.error}`;
     }
 }
-export class HttpErrorCode extends ErrorCode {
+exports.HashTreeDecodeErrorCode = HashTreeDecodeErrorCode;
+class HttpErrorCode extends ErrorCode {
     constructor(status, statusText, headers, bodyText) {
         super();
         this.status = status;
@@ -570,7 +616,8 @@ export class HttpErrorCode extends ErrorCode {
         return errorMessage;
     }
 }
-export class HttpV3ApiNotSupportedErrorCode extends ErrorCode {
+exports.HttpErrorCode = HttpErrorCode;
+class HttpV3ApiNotSupportedErrorCode extends ErrorCode {
     constructor() {
         super();
         this.name = 'HttpV3ApiNotSupportedErrorCode';
@@ -580,7 +627,8 @@ export class HttpV3ApiNotSupportedErrorCode extends ErrorCode {
         return 'HTTP request failed: v3 API is not supported';
     }
 }
-export class HttpFetchErrorCode extends ErrorCode {
+exports.HttpV3ApiNotSupportedErrorCode = HttpV3ApiNotSupportedErrorCode;
+class HttpFetchErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -591,7 +639,8 @@ export class HttpFetchErrorCode extends ErrorCode {
         return `Failed to fetch HTTP request: ${formatUnknownError(this.error)}`;
     }
 }
-export class MissingCanisterIdErrorCode extends ErrorCode {
+exports.HttpFetchErrorCode = HttpFetchErrorCode;
+class MissingCanisterIdErrorCode extends ErrorCode {
     constructor(receivedCanisterId) {
         super();
         this.receivedCanisterId = receivedCanisterId;
@@ -602,7 +651,8 @@ export class MissingCanisterIdErrorCode extends ErrorCode {
         return `Canister ID is required, but received ${typeof this.receivedCanisterId} instead. If you are using automatically generated declarations, this may be because your application is not setting the canister ID in process.env correctly.`;
     }
 }
-export class InvalidReadStateRequestErrorCode extends ErrorCode {
+exports.MissingCanisterIdErrorCode = MissingCanisterIdErrorCode;
+class InvalidReadStateRequestErrorCode extends ErrorCode {
     constructor(request) {
         super();
         this.request = request;
@@ -613,7 +663,8 @@ export class InvalidReadStateRequestErrorCode extends ErrorCode {
         return `Invalid read state request: ${this.request}`;
     }
 }
-export class ExpiryJsonDeserializeErrorCode extends ErrorCode {
+exports.InvalidReadStateRequestErrorCode = InvalidReadStateRequestErrorCode;
+class ExpiryJsonDeserializeErrorCode extends ErrorCode {
     constructor(error) {
         super();
         this.error = error;
@@ -624,7 +675,8 @@ export class ExpiryJsonDeserializeErrorCode extends ErrorCode {
         return `Failed to deserialize expiry: ${this.error}`;
     }
 }
-export class InvalidRootKeyErrorCode extends ErrorCode {
+exports.ExpiryJsonDeserializeErrorCode = ExpiryJsonDeserializeErrorCode;
+class InvalidRootKeyErrorCode extends ErrorCode {
     constructor(rootKey, expectedLength) {
         super();
         this.rootKey = rootKey;
@@ -636,7 +688,8 @@ export class InvalidRootKeyErrorCode extends ErrorCode {
         return `Invalid root key. Expected length: ${this.expectedLength}, actual length: ${this.rootKey.length}`;
     }
 }
-export class MissingCookieErrorCode extends ErrorCode {
+exports.InvalidRootKeyErrorCode = InvalidRootKeyErrorCode;
+class MissingCookieErrorCode extends ErrorCode {
     constructor(expectedCookieName) {
         super();
         this.expectedCookieName = expectedCookieName;
@@ -647,7 +700,8 @@ export class MissingCookieErrorCode extends ErrorCode {
         return `Cookie '${this.expectedCookieName}' not found`;
     }
 }
-export class EmptyCookieErrorCode extends ErrorCode {
+exports.MissingCookieErrorCode = MissingCookieErrorCode;
+class EmptyCookieErrorCode extends ErrorCode {
     constructor(expectedCookieName) {
         super();
         this.expectedCookieName = expectedCookieName;
@@ -658,6 +712,7 @@ export class EmptyCookieErrorCode extends ErrorCode {
         return `Cookie '${this.expectedCookieName}' is empty`;
     }
 }
+exports.EmptyCookieErrorCode = EmptyCookieErrorCode;
 function formatUnknownError(error) {
     if (error instanceof Error) {
         return error.stack ?? error.message;
@@ -674,5 +729,5 @@ function formatUnknownError(error) {
  *
  * For internal use only.
  */
-export const UNREACHABLE_ERROR = new Error('unreachable');
+exports.UNREACHABLE_ERROR = new Error('unreachable');
 //# sourceMappingURL=errors.js.map

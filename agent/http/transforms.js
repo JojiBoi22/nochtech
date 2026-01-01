@@ -1,7 +1,13 @@
-import { lebEncode } from '@dfinity/candid';
-import { Endpoint, makeNonce, } from "./types.js";
-import { ExpiryJsonDeserializeErrorCode, InputError } from "../../errors.js";
-export const JSON_KEY_EXPIRY = '__expiry__';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Expiry = exports.JSON_KEY_EXPIRY = void 0;
+exports.makeNonceTransform = makeNonceTransform;
+exports.makeExpiryTransform = makeExpiryTransform;
+exports.httpHeadersTransform = httpHeadersTransform;
+const candid_1 = require("@dfinity/candid");
+const types_ts_1 = require("./types.js");
+const errors_ts_1 = require("../../errors.js");
+exports.JSON_KEY_EXPIRY = '__expiry__';
 const SECONDS_TO_MILLISECONDS = BigInt(1_000);
 const MILLISECONDS_TO_NANOSECONDS = BigInt(1_000_000);
 const MINUTES_TO_SECONDS = BigInt(60);
@@ -13,7 +19,7 @@ function roundToSecond(millis) {
 function roundToMinute(millis) {
     return (millis / MINUTES_TO_MILLISECONDS) * MINUTES_TO_MILLISECONDS;
 }
-export class Expiry {
+class Expiry {
     constructor(__expiry__) {
         this.__expiry__ = __expiry__;
         this._isExpiry = true;
@@ -46,7 +52,7 @@ export class Expiry {
         return this.__expiry__;
     }
     toHash() {
-        return lebEncode(this.__expiry__);
+        return (0, candid_1.lebEncode)(this.__expiry__);
     }
     toString() {
         return this.__expiry__.toString();
@@ -56,7 +62,7 @@ export class Expiry {
      * @returns {JsonnableExpiry} a JSON object with a single key, {@link JSON_KEY_EXPIRY}, whose value is the expiry as a string
      */
     toJSON() {
-        return { [JSON_KEY_EXPIRY]: this.toString() };
+        return { [exports.JSON_KEY_EXPIRY]: this.toString() };
     }
     /**
      * Deserializes a {@link JsonnableExpiry} object from a JSON string.
@@ -65,16 +71,16 @@ export class Expiry {
      */
     static fromJSON(input) {
         const obj = JSON.parse(input);
-        if (obj[JSON_KEY_EXPIRY]) {
+        if (obj[exports.JSON_KEY_EXPIRY]) {
             try {
-                const expiry = BigInt(obj[JSON_KEY_EXPIRY]);
+                const expiry = BigInt(obj[exports.JSON_KEY_EXPIRY]);
                 return new Expiry(expiry);
             }
             catch (error) {
-                throw new InputError(new ExpiryJsonDeserializeErrorCode(`Not a valid BigInt: ${error}`));
+                throw new errors_ts_1.InputError(new errors_ts_1.ExpiryJsonDeserializeErrorCode(`Not a valid BigInt: ${error}`));
             }
         }
-        throw new InputError(new ExpiryJsonDeserializeErrorCode(`The input does not contain the key ${JSON_KEY_EXPIRY}`));
+        throw new errors_ts_1.InputError(new errors_ts_1.ExpiryJsonDeserializeErrorCode(`The input does not contain the key ${exports.JSON_KEY_EXPIRY}`));
     }
     static isExpiry(other) {
         return (other instanceof Expiry ||
@@ -86,12 +92,13 @@ export class Expiry {
                 typeof other['__expiry__'] === 'bigint'));
     }
 }
+exports.Expiry = Expiry;
 /**
  * Create a Nonce transform, which takes a function that returns a Buffer, and adds it
  * as the nonce to every call requests.
  * @param nonceFn A function that returns a buffer. By default uses a semi-random method.
  */
-export function makeNonceTransform(nonceFn = makeNonce) {
+function makeNonceTransform(nonceFn = types_ts_1.makeNonce) {
     return async (request) => {
         // Nonce needs to be inserted into the header for all requests, to enable logs to be correlated with requests.
         const headers = request.request.headers;
@@ -99,7 +106,7 @@ export function makeNonceTransform(nonceFn = makeNonce) {
         // headers.set('X-IC-Request-ID', toHex(new Uint8Array(nonce)));
         request.request.headers = headers;
         // Nonce only needs to be inserted into the body for async calls, to prevent replay attacks.
-        if (request.endpoint === Endpoint.Call) {
+        if (request.endpoint === types_ts_1.Endpoint.Call) {
             request.body.nonce = nonceFn();
         }
     };
@@ -108,7 +115,7 @@ export function makeNonceTransform(nonceFn = makeNonce) {
  * Create a transform that adds a delay (by default 5 minutes) to the expiry.
  * @param delayInMilliseconds The delay to add to the call time, in milliseconds.
  */
-export function makeExpiryTransform(delayInMilliseconds) {
+function makeExpiryTransform(delayInMilliseconds) {
     return async (request) => {
         request.body.ingress_expiry = Expiry.fromDeltaInMilliseconds(delayInMilliseconds);
     };
@@ -118,7 +125,7 @@ export function makeExpiryTransform(delayInMilliseconds) {
  * @param headers Fetch definition of the headers type
  * @returns array of header fields
  */
-export function httpHeadersTransform(headers) {
+function httpHeadersTransform(headers) {
     const headerFields = [];
     headers.forEach((value, key) => {
         headerFields.push([key, value]);

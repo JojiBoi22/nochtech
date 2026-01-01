@@ -1,9 +1,12 @@
+"use strict";
 var _a, _b;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExpirableMap = void 0;
 /**
  * A map that expires entries after a given time.
  * Defaults to 10 minutes.
  */
-export class ExpirableMap {
+class ExpirableMap {
     static { _a = Symbol.iterator, _b = Symbol.toStringTag; }
     // Internals
     #inner;
@@ -141,4 +144,5 @@ export class ExpirableMap {
         return this.#inner.size;
     }
 }
+exports.ExpirableMap = ExpirableMap;
 //# sourceMappingURL=expirableMap.js.map

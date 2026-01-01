@@ -1,8 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.randomNumber = void 0;
 /**
  * Generates a random unsigned 32-bit integer between 0 and 0xffffffff
  * @returns {number} a random number
  */
-export const randomNumber = () => {
+const randomNumber = () => {
     // determine whether browser crypto is available
     if (typeof window !== 'undefined' && !!window.crypto && !!window.crypto.getRandomValues) {
         const array = new Uint32Array(1);
@@ -22,4 +25,5 @@ export const randomNumber = () => {
     // fall back to Math.random
     return Math.floor(Math.random() * 0xffffffff);
 };
+exports.randomNumber = randomNumber;
 //# sourceMappingURL=random.js.map

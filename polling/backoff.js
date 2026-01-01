@@ -1,3 +1,7 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ExponentialBackoff = void 0;
+exports.exponentialBackoff = exponentialBackoff;
 const RANDOMIZATION_FACTOR = 0.5;
 const MULTIPLIER = 1.5;
 const INITIAL_INTERVAL_MSEC = 500;
@@ -7,7 +11,7 @@ const MAX_ITERATIONS = 10;
 /**
  * Exponential backoff strategy.
  */
-export class ExponentialBackoff {
+class ExponentialBackoff {
     #currentInterval;
     #randomizationFactor;
     #multiplier;
@@ -68,13 +72,14 @@ export class ExponentialBackoff {
         }
     }
 }
+exports.ExponentialBackoff = ExponentialBackoff;
 /**
  * Utility function to create an exponential backoff iterator.
  * @param options - for the exponential backoff
  * @returns an iterator that yields the next delay in the exponential backoff
  * @yields the next delay in the exponential backoff
  */
-export function* exponentialBackoff(options = ExponentialBackoff.default) {
+function* exponentialBackoff(options = ExponentialBackoff.default) {
     const backoff = new ExponentialBackoff(options);
     let next = backoff.next();
     while (next) {

@@ -1,4 +1,14 @@
-import { ProtocolError, TimeoutWaitingForResponseErrorCode } from "../errors.js";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.defaultStrategy = defaultStrategy;
+exports.once = once;
+exports.conditionalDelay = conditionalDelay;
+exports.maxAttempts = maxAttempts;
+exports.throttle = throttle;
+exports.timeout = timeout;
+exports.backoff = backoff;
+exports.chain = chain;
+const errors_ts_1 = require("../errors.js");
 const FIVE_MINUTES_IN_MSEC = 5 * 60 * 1000;
 /**
  * A best practices polling strategy: wait 2 seconds before the first poll, then 1 second
@@ -7,13 +17,13 @@ const FIVE_MINUTES_IN_MSEC = 5 * 60 * 1000;
  * Note that calling this function will create the strategy chain described above and already start the 5 minutes timeout.
  * You should only call this function when you want to start the polling, and not before, to avoid exhausting the 5 minutes timeout in advance.
  */
-export function defaultStrategy() {
+function defaultStrategy() {
     return chain(conditionalDelay(once(), 1000), backoff(1000, 1.2), timeout(FIVE_MINUTES_IN_MSEC));
 }
 /**
  * Predicate that returns true once.
  */
-export function once() {
+function once() {
     let first = true;
     return async () => {
         if (first) {
@@ -28,7 +38,7 @@ export function once() {
  * @param condition A predicate that indicates when to delay.
  * @param timeInMsec The amount of time to delay.
  */
-export function conditionalDelay(condition, timeInMsec) {
+function conditionalDelay(condition, timeInMsec) {
     return async (canisterId, requestId, status) => {
         if (await condition(canisterId, requestId, status)) {
             return new Promise(resolve => setTimeout(resolve, timeInMsec));
@@ -39,11 +49,11 @@ export function conditionalDelay(condition, timeInMsec) {
  * Error out after a maximum number of polling has been done.
  * @param count The maximum attempts to poll.
  */
-export function maxAttempts(count) {
+function maxAttempts(count) {
     let attempts = count;
     return async (_canisterId, requestId, status) => {
         if (--attempts <= 0) {
-            throw ProtocolError.fromCode(new TimeoutWaitingForResponseErrorCode(`Failed to retrieve a reply for request after ${count} attempts`, requestId, status));
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.TimeoutWaitingForResponseErrorCode(`Failed to retrieve a reply for request after ${count} attempts`, requestId, status));
         }
     };
 }
@@ -51,18 +61,18 @@ export function maxAttempts(count) {
  * Throttle polling.
  * @param throttleInMsec Amount in millisecond to wait between each polling.
  */
-export function throttle(throttleInMsec) {
+function throttle(throttleInMsec) {
     return () => new Promise(resolve => setTimeout(resolve, throttleInMsec));
 }
 /**
  * Reject a call after a certain amount of time.
  * @param timeInMsec Time in milliseconds before the polling should be rejected.
  */
-export function timeout(timeInMsec) {
+function timeout(timeInMsec) {
     const end = Date.now() + timeInMsec;
     return async (_canisterId, requestId, status) => {
         if (Date.now() > end) {
-            throw ProtocolError.fromCode(new TimeoutWaitingForResponseErrorCode(`Request timed out after ${timeInMsec} msec`, requestId, status));
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.TimeoutWaitingForResponseErrorCode(`Request timed out after ${timeInMsec} msec`, requestId, status));
         }
     };
 }
@@ -72,7 +82,7 @@ export function timeout(timeInMsec) {
  * @param backoffFactor The factor to multiple the throttle time between every poll. For
  *   example if using 2, the throttle will double between every run.
  */
-export function backoff(startingThrottleInMsec, backoffFactor) {
+function backoff(startingThrottleInMsec, backoffFactor) {
     let currentThrottling = startingThrottleInMsec;
     return () => new Promise(resolve => setTimeout(() => {
         currentThrottling *= backoffFactor;
@@ -84,7 +94,7 @@ export function backoff(startingThrottleInMsec, backoffFactor) {
  * say, two throttling strategy of 1 second, it will result in a throttle of 2 seconds.
  * @param strategies A strategy list to chain.
  */
-export function chain(...strategies) {
+function chain(...strategies) {
     return async (canisterId, requestId, status) => {
         for (const a of strategies) {
             await a(canisterId, requestId, status);

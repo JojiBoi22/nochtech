@@ -1,25 +1,66 @@
-import { Principal } from '@dfinity/principal';
-import { HashTreeDecodeErrorCode, CreateHttpAgentErrorCode, ExternalError, HttpDefaultFetchErrorCode, IdentityInvalidErrorCode, IngressExpiryInvalidErrorCode, InputError, LookupErrorCode, MalformedPublicKeyErrorCode, MalformedSignatureErrorCode, MissingRootKeyErrorCode, MissingSignatureErrorCode, ProtocolError, QuerySignatureVerificationFailedErrorCode, TimeoutWaitingForResponseErrorCode, TrustError, UnexpectedErrorCode, UnknownError, HttpErrorCode, HttpV3ApiNotSupportedErrorCode, TransportError, HttpFetchErrorCode, AgentError, MalformedLookupFoundValueErrorCode, CertificateOutdatedErrorCode, } from "../../errors.js";
-import { AnonymousIdentity } from "../../auth.js";
-import * as cbor from "../../cbor.js";
-import { hashOfMap, requestIdOf } from "../../request_id.js";
-import { QueryResponseStatus, } from "../api.js";
-import { Expiry, httpHeadersTransform, makeNonceTransform } from "./transforms.js";
-import { Endpoint, makeNonce, ReadRequestType, SubmitRequestType, } from "./types.js";
-import { request as canisterStatusRequest } from "../../canisterStatus/index.js";
-import { lookup_path, LookupPathStatus } from "../../certificate.js";
-import { ed25519 } from '@noble/curves/ed25519';
-import { ExpirableMap } from "../../utils/expirableMap.js";
-import { Ed25519PublicKey } from "../../public_key.js";
-import { ObservableLog } from "../../observable.js";
-import { ExponentialBackoff, } from "../../polling/backoff.js";
-import { decodeTime } from "../../utils/leb.js";
-import { concatBytes, hexToBytes } from '@noble/hashes/utils';
-import { uint8Equals, uint8FromBufLike } from "../../utils/buffer.js";
-import { IC_RESPONSE_DOMAIN_SEPARATOR } from "../../constants.js";
-export * from "./transforms.js";
-export { makeNonce } from "./types.js";
-export var RequestStatusResponseStatus;
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HttpAgent = exports.MANAGEMENT_CANISTER_ID = exports.IC_ROOT_KEY = exports.RequestStatusResponseStatus = exports.makeNonce = void 0;
+exports.calculateIngressExpiry = calculateIngressExpiry;
+const principal_1 = require("@dfinity/principal");
+const errors_ts_1 = require("../../errors.js");
+const auth_ts_1 = require("../../auth.js");
+const cbor = __importStar(require("../../cbor.js"));
+const request_id_ts_1 = require("../../request_id.js");
+const api_ts_1 = require("../api.js");
+const transforms_ts_1 = require("./transforms.js");
+const types_ts_1 = require("./types.js");
+const index_ts_1 = require("../../canisterStatus/index.js");
+const certificate_ts_1 = require("../../certificate.js");
+const ed25519_1 = require("@noble/curves/ed25519");
+const expirableMap_ts_1 = require("../../utils/expirableMap.js");
+const public_key_ts_1 = require("../../public_key.js");
+const observable_ts_1 = require("../../observable.js");
+const backoff_ts_1 = require("../../polling/backoff.js");
+const leb_ts_1 = require("../../utils/leb.js");
+const utils_1 = require("@noble/hashes/utils");
+const buffer_ts_1 = require("../../utils/buffer.js");
+const constants_ts_1 = require("../../constants.js");
+__exportStar(require("./transforms.js"), exports);
+var types_ts_2 = require("./types.js");
+Object.defineProperty(exports, "makeNonce", { enumerable: true, get: function () { return types_ts_2.makeNonce; } });
+var RequestStatusResponseStatus;
 (function (RequestStatusResponseStatus) {
     RequestStatusResponseStatus["Received"] = "received";
     RequestStatusResponseStatus["Processing"] = "processing";
@@ -27,16 +68,16 @@ export var RequestStatusResponseStatus;
     RequestStatusResponseStatus["Rejected"] = "rejected";
     RequestStatusResponseStatus["Unknown"] = "unknown";
     RequestStatusResponseStatus["Done"] = "done";
-})(RequestStatusResponseStatus || (RequestStatusResponseStatus = {}));
+})(RequestStatusResponseStatus || (exports.RequestStatusResponseStatus = RequestStatusResponseStatus = {}));
 const MINUTE_TO_MSECS = 60 * 1_000;
 const MSECS_TO_NANOSECONDS = 1_000_000;
 const DEFAULT_TIME_DIFF_MSECS = 0;
 // Root public key for the IC, encoded as hex
-export const IC_ROOT_KEY = '308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100814' +
+exports.IC_ROOT_KEY = '308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100814' +
     'c0e6ec71fab583b08bd81373c255c3c371b2e84863c98a4f1e08b74235d14fb5d9c0cd546d968' +
     '5f913a0c0b2cc5341583bf4b4392e467db96d65b9bb4cb717112f8472e0d5a4d14505ffd7484' +
     'b01291091c5f87b98883463f98091a0baaae';
-export const MANAGEMENT_CANISTER_ID = 'aaaaa-aa';
+exports.MANAGEMENT_CANISTER_ID = 'aaaaa-aa';
 // IC0 domain info
 const IC0_DOMAIN = 'ic0.app';
 const IC0_SUB_DOMAIN = '.ic0.app';
@@ -55,7 +96,7 @@ function getDefaultFetch() {
             defaultFetch = window.fetch.bind(window);
         }
         else {
-            throw ExternalError.fromCode(new HttpDefaultFetchErrorCode('Fetch implementation was not available. You appear to be in a browser context, but window.fetch was not present.'));
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.HttpDefaultFetchErrorCode('Fetch implementation was not available. You appear to be in a browser context, but window.fetch was not present.'));
         }
     }
     else if (typeof global !== 'undefined') {
@@ -64,7 +105,7 @@ function getDefaultFetch() {
             defaultFetch = global.fetch.bind(global);
         }
         else {
-            throw ExternalError.fromCode(new HttpDefaultFetchErrorCode('Fetch implementation was not available. You appear to be in a Node.js context, but global.fetch was not available.'));
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.HttpDefaultFetchErrorCode('Fetch implementation was not available. You appear to be in a Node.js context, but global.fetch was not available.'));
         }
     }
     else if (typeof self !== 'undefined') {
@@ -75,7 +116,7 @@ function getDefaultFetch() {
     if (defaultFetch) {
         return defaultFetch;
     }
-    throw ExternalError.fromCode(new HttpDefaultFetchErrorCode('Fetch implementation was not available. Please provide fetch to the HttpAgent constructor, or ensure it is available in the window or global context.'));
+    throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.HttpDefaultFetchErrorCode('Fetch implementation was not available. Please provide fetch to the HttpAgent constructor, or ensure it is available in the window or global context.'));
 }
 function determineHost(configuredHost) {
     let host;
@@ -122,7 +163,7 @@ it to the client. This is to decouple signature, nonce generation and
 other computations so that this class can stay as simple as possible while
 allowing extensions.
  */
-export class HttpAgent {
+class HttpAgent {
     #rootKeyPromise;
     #shouldFetchRootKey;
     #timeDiffMsecs;
@@ -158,10 +199,10 @@ export class HttpAgent {
         // Public signature to help with type checking.
         this._isAgent = true;
         this.config = {};
-        this.log = new ObservableLog();
+        this.log = new observable_ts_1.ObservableLog();
         this.#queryPipeline = [];
         this.#updatePipeline = [];
-        this.#subnetKeys = new ExpirableMap({
+        this.#subnetKeys = new expirableMap_ts_1.ExpirableMap({
             expirationTime: 5 * MINUTE_TO_MSECS,
         });
         this.#verifyQuerySignatures = true;
@@ -179,21 +220,21 @@ export class HttpAgent {
             const { status, signatures = [], requestId } = queryResponse;
             for (const sig of signatures) {
                 const { timestamp, identity } = sig;
-                const nodeId = Principal.fromUint8Array(identity).toText();
+                const nodeId = principal_1.Principal.fromUint8Array(identity).toText();
                 // Hash is constructed differently depending on the status
                 let hash;
-                if (status === QueryResponseStatus.Replied) {
+                if (status === api_ts_1.QueryResponseStatus.Replied) {
                     const { reply } = queryResponse;
-                    hash = hashOfMap({
+                    hash = (0, request_id_ts_1.hashOfMap)({
                         status: status,
                         reply: reply,
                         timestamp: BigInt(timestamp),
                         request_id: requestId,
                     });
                 }
-                else if (status === QueryResponseStatus.Rejected) {
+                else if (status === api_ts_1.QueryResponseStatus.Rejected) {
                     const { reject_code, reject_message, error_code } = queryResponse;
-                    hash = hashOfMap({
+                    hash = (0, request_id_ts_1.hashOfMap)({
                         status: status,
                         reject_code: reject_code,
                         reject_message: reject_message,
@@ -203,19 +244,19 @@ export class HttpAgent {
                     });
                 }
                 else {
-                    throw UnknownError.fromCode(new UnexpectedErrorCode(`Unknown status: ${status}`));
+                    throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode(`Unknown status: ${status}`));
                 }
-                const separatorWithHash = concatBytes(IC_RESPONSE_DOMAIN_SEPARATOR, hash);
+                const separatorWithHash = (0, utils_1.concatBytes)(constants_ts_1.IC_RESPONSE_DOMAIN_SEPARATOR, hash);
                 // FIX: check for match without verifying N times
                 const pubKey = subnetStatus.nodeKeys.get(nodeId);
                 if (!pubKey) {
-                    throw ProtocolError.fromCode(new MalformedPublicKeyErrorCode());
+                    throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.MalformedPublicKeyErrorCode());
                 }
-                const rawKey = Ed25519PublicKey.fromDer(pubKey).rawKey;
-                const valid = ed25519.verify(sig.signature, separatorWithHash, rawKey);
+                const rawKey = public_key_ts_1.Ed25519PublicKey.fromDer(pubKey).rawKey;
+                const valid = ed25519_1.ed25519.verify(sig.signature, separatorWithHash, rawKey);
                 if (valid)
                     return queryResponse;
-                throw TrustError.fromCode(new QuerySignatureVerificationFailedErrorCode(nodeId));
+                throw errors_ts_1.TrustError.fromCode(new errors_ts_1.QuerySignatureVerificationFailedErrorCode(nodeId));
             }
             return queryResponse;
         };
@@ -233,7 +274,7 @@ export class HttpAgent {
             this.rootKey = null;
         }
         else {
-            this.rootKey = hexToBytes(IC_ROOT_KEY);
+            this.rootKey = (0, utils_1.hexToBytes)(exports.IC_ROOT_KEY);
         }
         const host = determineHost(options.host);
         this.host = new URL(host);
@@ -243,7 +284,7 @@ export class HttpAgent {
         // Default is 3
         this.#retryTimes = options.retryTimes ?? 3;
         // Delay strategy for retries. Default is exponential backoff
-        const defaultBackoffFactory = () => new ExponentialBackoff({
+        const defaultBackoffFactory = () => new backoff_ts_1.ExponentialBackoff({
             maxIterations: this.#retryTimes,
         });
         this.#backoffStrategy = options.backoffStrategy || defaultBackoffFactory;
@@ -261,18 +302,18 @@ export class HttpAgent {
             const { name, password } = options.credentials;
             this.#credentials = `${name}${password ? ':' + password : ''}`;
         }
-        this.#identity = Promise.resolve(options.identity || new AnonymousIdentity());
+        this.#identity = Promise.resolve(options.identity || new auth_ts_1.AnonymousIdentity());
         if (options.ingressExpiryInMinutes && options.ingressExpiryInMinutes > 5) {
-            throw InputError.fromCode(new IngressExpiryInvalidErrorCode('The maximum ingress expiry time is 5 minutes.', options.ingressExpiryInMinutes));
+            throw errors_ts_1.InputError.fromCode(new errors_ts_1.IngressExpiryInvalidErrorCode('The maximum ingress expiry time is 5 minutes.', options.ingressExpiryInMinutes));
         }
         if (options.ingressExpiryInMinutes && options.ingressExpiryInMinutes <= 0) {
-            throw InputError.fromCode(new IngressExpiryInvalidErrorCode('Ingress expiry time must be greater than 0.', options.ingressExpiryInMinutes));
+            throw errors_ts_1.InputError.fromCode(new errors_ts_1.IngressExpiryInvalidErrorCode('Ingress expiry time must be greater than 0.', options.ingressExpiryInMinutes));
         }
         this.#maxIngressExpiryInMinutes = options.ingressExpiryInMinutes || 5;
         // Add a nonce transform to ensure calls are unique
-        this.addTransform('update', makeNonceTransform(makeNonce));
+        this.addTransform('update', (0, transforms_ts_1.makeNonceTransform)(types_ts_1.makeNonce));
         if (options.useQueryNonces) {
-            this.addTransform('query', makeNonceTransform(makeNonce));
+            this.addTransform('query', (0, transforms_ts_1.makeNonceTransform)(types_ts_1.makeNonce));
         }
         if (options.logToConsole) {
             this.log.subscribe(log => {
@@ -310,7 +351,7 @@ export class HttpAgent {
             });
         }
         catch {
-            throw InputError.fromCode(new CreateHttpAgentErrorCode());
+            throw errors_ts_1.InputError.fromCode(new errors_ts_1.CreateHttpAgentErrorCode());
         }
     }
     isLocal() {
@@ -331,7 +372,7 @@ export class HttpAgent {
     }
     async getPrincipal() {
         if (!this.#identity) {
-            throw ExternalError.fromCode(new IdentityInvalidErrorCode());
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.IdentityInvalidErrorCode());
         }
         return (await this.#identity).getPrincipal();
     }
@@ -351,17 +392,17 @@ export class HttpAgent {
         const callSync = options.callSync ?? true;
         const id = await (identity ?? this.#identity);
         if (!id) {
-            throw ExternalError.fromCode(new IdentityInvalidErrorCode());
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.IdentityInvalidErrorCode());
         }
-        const canister = Principal.from(canisterId);
+        const canister = principal_1.Principal.from(canisterId);
         const ecid = options.effectiveCanisterId
-            ? Principal.from(options.effectiveCanisterId)
+            ? principal_1.Principal.from(options.effectiveCanisterId)
             : canister;
         await this.#asyncGuard(ecid);
         const sender = id.getPrincipal();
         const ingress_expiry = calculateIngressExpiry(this.#maxIngressExpiryInMinutes, this.#timeDiffMsecs);
         const submit = {
-            request_type: SubmitRequestType.Call,
+            request_type: types_ts_1.SubmitRequestType.Call,
             canister_id: canister,
             method_name: options.methodName,
             arg: options.arg,
@@ -377,7 +418,7 @@ export class HttpAgent {
                     ...(this.#credentials ? { Authorization: 'Basic ' + btoa(this.#credentials) } : {}),
                 },
             },
-            endpoint: Endpoint.Call,
+            endpoint: types_ts_1.Endpoint.Call,
             body: submit,
         }));
         // Determine the nonce to use for the request
@@ -408,7 +449,7 @@ export class HttpAgent {
         transformedRequest = (await id.transformRequest(transformedRequest));
         const body = cbor.encode(transformedRequest.body);
         const backoff = this.#backoffStrategy();
-        const requestId = requestIdOf(submit);
+        const requestId = (0, request_id_ts_1.requestIdOf)(submit);
         try {
             // Attempt v3 sync call
             const requestSync = () => {
@@ -445,9 +486,9 @@ export class HttpAgent {
         }
         catch (error) {
             let callError;
-            if (error instanceof AgentError) {
+            if (error instanceof errors_ts_1.AgentError) {
                 // If the error is due to the v3 api not being supported, fall back to v2
-                if (error.hasCode(HttpV3ApiNotSupportedErrorCode)) {
+                if (error.hasCode(errors_ts_1.HttpV3ApiNotSupportedErrorCode)) {
                     this.log.warn('v3 api not supported. Fall back to v2');
                     return this.call(canisterId, {
                         ...options,
@@ -455,7 +496,7 @@ export class HttpAgent {
                         callSync: false,
                     }, identity);
                 }
-                else if (error.hasCode(IngressExpiryInvalidErrorCode) && !this.#hasSyncedTime) {
+                else if (error.hasCode(errors_ts_1.IngressExpiryInvalidErrorCode) && !this.#hasSyncedTime) {
                     // if there is an ingress expiry error and the time has not been synced yet,
                     // sync time with the network and try again
                     await this.syncTime(canister);
@@ -473,7 +514,7 @@ export class HttpAgent {
                 }
             }
             else {
-                callError = UnknownError.fromCode(new UnexpectedErrorCode(error));
+                callError = errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode(error));
             }
             this.log.error(`Error while making call: ${callError.message}`, callError);
             throw callError;
@@ -489,7 +530,7 @@ export class HttpAgent {
         });
         // If delay is null, the backoff strategy is exhausted due to a maximum number of retries, duration, or other reason
         if (delay === null) {
-            throw UnknownError.fromCode(new TimeoutWaitingForResponseErrorCode(`Backoff strategy exhausted after ${tries} attempts.`, requestId));
+            throw errors_ts_1.UnknownError.fromCode(new errors_ts_1.TimeoutWaitingForResponseErrorCode(`Backoff strategy exhausted after ${tries} attempts.`, requestId));
         }
         if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -504,20 +545,20 @@ export class HttpAgent {
                 body,
             });
             if (fetchResponse.status === HTTP_STATUS_OK) {
-                const queryResponse = cbor.decode(uint8FromBufLike(await fetchResponse.arrayBuffer()));
+                const queryResponse = cbor.decode((0, buffer_ts_1.uint8FromBufLike)(await fetchResponse.arrayBuffer()));
                 response = {
                     ...queryResponse,
                     httpDetails: {
                         ok: fetchResponse.ok,
                         status: fetchResponse.status,
                         statusText: fetchResponse.statusText,
-                        headers: httpHeadersTransform(fetchResponse.headers),
+                        headers: (0, transforms_ts_1.httpHeadersTransform)(fetchResponse.headers),
                     },
                     requestId,
                 };
             }
             else {
-                throw ProtocolError.fromCode(new HttpErrorCode(fetchResponse.status, fetchResponse.statusText, httpHeadersTransform(fetchResponse.headers), await fetchResponse.text()));
+                throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.HttpErrorCode(fetchResponse.status, fetchResponse.statusText, (0, transforms_ts_1.httpHeadersTransform)(fetchResponse.headers), await fetchResponse.text()));
             }
         }
         catch (error) {
@@ -527,12 +568,12 @@ export class HttpAgent {
                     `  Retrying query.`);
                 return await this.#requestAndRetryQuery({ ...args, tries: tries + 1 });
             }
-            if (error instanceof AgentError) {
+            if (error instanceof errors_ts_1.AgentError) {
                 // if it's an error that we have thrown, just throw it as is
                 throw error;
             }
             // if it's an error that we have not thrown, wrap it in a TransportError
-            throw TransportError.fromCode(new HttpFetchErrorCode(error));
+            throw errors_ts_1.TransportError.fromCode(new errors_ts_1.HttpFetchErrorCode(error));
         }
         // Skip timestamp verification if the user has set verifyQuerySignatures to false
         if (!this.#verifyQuerySignatures) {
@@ -540,7 +581,7 @@ export class HttpAgent {
         }
         const signatureTimestampNs = response.signatures?.[0]?.timestamp;
         if (!signatureTimestampNs) {
-            throw ProtocolError.fromCode(new MalformedSignatureErrorCode('Timestamp not found in query response. This suggests a malformed or malicious response.'));
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.MalformedSignatureErrorCode('Timestamp not found in query response. This suggests a malformed or malicious response.'));
         }
         const signatureTimestampMs = Number(BigInt(signatureTimestampNs) / BigInt(MSECS_TO_NANOSECONDS));
         const currentTimestampInMs = Date.now() + this.#timeDiffMsecs;
@@ -553,7 +594,7 @@ export class HttpAgent {
                 });
                 return await this.#requestAndRetryQuery({ ...args, tries: tries + 1 });
             }
-            throw TrustError.fromCode(new CertificateOutdatedErrorCode(this.#maxIngressExpiryInMinutes, requestId, tries));
+            throw errors_ts_1.TrustError.fromCode(new errors_ts_1.CertificateOutdatedErrorCode(this.#maxIngressExpiryInMinutes, requestId, tries));
         }
         return response;
     }
@@ -573,7 +614,7 @@ export class HttpAgent {
         const delay = tries === 0 ? 0 : backoff.next();
         // If delay is null, the backoff strategy is exhausted due to a maximum number of retries, duration, or other reason
         if (delay === null) {
-            throw ProtocolError.fromCode(new TimeoutWaitingForResponseErrorCode(`Retry strategy exhausted after ${tries} attempts.`));
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.TimeoutWaitingForResponseErrorCode(`Retry strategy exhausted after ${tries} attempts.`));
         }
         if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
@@ -585,7 +626,7 @@ export class HttpAgent {
             // According to the spec, only 200 responses have a non-empty body
             if (response.status === HTTP_STATUS_OK) {
                 // Consume the response body, to ensure that the response is not closed unexpectedly
-                responseBodyBytes = uint8FromBufLike(await response.clone().arrayBuffer());
+                responseBodyBytes = (0, buffer_ts_1.uint8FromBufLike)(await response.clone().arrayBuffer());
             }
         }
         catch (error) {
@@ -596,9 +637,9 @@ export class HttpAgent {
                 // Delay the request by the configured backoff strategy
                 return await this.#requestAndRetry({ requestFn, backoff, tries: tries + 1 });
             }
-            throw TransportError.fromCode(new HttpFetchErrorCode(error));
+            throw errors_ts_1.TransportError.fromCode(new errors_ts_1.HttpFetchErrorCode(error));
         }
-        const headers = httpHeadersTransform(response.headers);
+        const headers = (0, transforms_ts_1.httpHeadersTransform)(response.headers);
         if (response.status === HTTP_STATUS_OK || response.status === HTTP_STATUS_ACCEPTED) {
             return {
                 ok: response.ok, // should always be true
@@ -610,42 +651,42 @@ export class HttpAgent {
         }
         const responseText = await response.text();
         if (response.status === HTTP_STATUS_NOT_FOUND && response.url.includes('api/v3')) {
-            throw ProtocolError.fromCode(new HttpV3ApiNotSupportedErrorCode());
+            throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.HttpV3ApiNotSupportedErrorCode());
         }
         // The error message comes from https://github.com/dfinity/ic/blob/23d5990bfc5277c32e54f0087b5a38fa412171e1/rs/validator/src/ingress_validation.rs#L233
         if (responseText.startsWith('Invalid request expiry: ')) {
-            throw InputError.fromCode(new IngressExpiryInvalidErrorCode(responseText, this.#maxIngressExpiryInMinutes));
+            throw errors_ts_1.InputError.fromCode(new errors_ts_1.IngressExpiryInvalidErrorCode(responseText, this.#maxIngressExpiryInMinutes));
         }
         if (tries < this.#retryTimes) {
             return await this.#requestAndRetry({ requestFn, backoff, tries: tries + 1 });
         }
-        throw ProtocolError.fromCode(new HttpErrorCode(response.status, response.statusText, headers, responseText));
+        throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.HttpErrorCode(response.status, response.statusText, headers, responseText));
     }
     async query(canisterId, fields, identity) {
         const backoff = this.#backoffStrategy();
         const ecid = fields.effectiveCanisterId
-            ? Principal.from(fields.effectiveCanisterId)
-            : Principal.from(canisterId);
+            ? principal_1.Principal.from(fields.effectiveCanisterId)
+            : principal_1.Principal.from(canisterId);
         await this.#asyncGuard(ecid);
         this.log.print(`ecid ${ecid.toString()}`);
         this.log.print(`canisterId ${canisterId.toString()}`);
         let transformedRequest;
         const id = await (identity ?? this.#identity);
         if (!id) {
-            throw ExternalError.fromCode(new IdentityInvalidErrorCode());
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.IdentityInvalidErrorCode());
         }
-        const canister = Principal.from(canisterId);
+        const canister = principal_1.Principal.from(canisterId);
         const sender = id.getPrincipal();
         const ingressExpiry = calculateIngressExpiry(this.#maxIngressExpiryInMinutes, this.#timeDiffMsecs);
         const request = {
-            request_type: ReadRequestType.Query,
+            request_type: types_ts_1.ReadRequestType.Query,
             canister_id: canister,
             method_name: fields.methodName,
             arg: fields.arg,
             sender,
             ingress_expiry: ingressExpiry,
         };
-        const requestId = requestIdOf(request);
+        const requestId = (0, request_id_ts_1.requestIdOf)(request);
         transformedRequest = await this._transform({
             request: {
                 method: 'POST',
@@ -654,7 +695,7 @@ export class HttpAgent {
                     ...(this.#credentials ? { Authorization: 'Basic ' + btoa(this.#credentials) } : {}),
                 },
             },
-            endpoint: Endpoint.Query,
+            endpoint: types_ts_1.Endpoint.Query,
             body: request,
         });
         // Apply transform for identity.
@@ -685,7 +726,7 @@ export class HttpAgent {
             await this.fetchSubnetKeys(ecid.toString());
             const subnetStatus = this.#subnetKeys.get(ecid.toString());
             if (!subnetStatus) {
-                throw TrustError.fromCode(new MissingSignatureErrorCode());
+                throw errors_ts_1.TrustError.fromCode(new errors_ts_1.MissingSignatureErrorCode());
             }
             return subnetStatus;
         };
@@ -709,7 +750,7 @@ export class HttpAgent {
         }
         catch (error) {
             let queryError;
-            if (error instanceof AgentError) {
+            if (error instanceof errors_ts_1.AgentError) {
                 // override the error code to include the request details
                 error.code.requestContext = {
                     requestId,
@@ -720,7 +761,7 @@ export class HttpAgent {
                 queryError = error;
             }
             else {
-                queryError = UnknownError.fromCode(new UnexpectedErrorCode(error));
+                queryError = errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode(error));
             }
             this.log.error(`Error while making query: ${queryError.message}`, queryError);
             throw queryError;
@@ -737,7 +778,7 @@ export class HttpAgent {
         await this.#asyncGuard();
         const id = await (identity ?? this.#identity);
         if (!id) {
-            throw ExternalError.fromCode(new IdentityInvalidErrorCode());
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.IdentityInvalidErrorCode());
         }
         const sender = id.getPrincipal();
         const transformedRequest = await this._transform({
@@ -748,9 +789,9 @@ export class HttpAgent {
                     ...(this.#credentials ? { Authorization: 'Basic ' + btoa(this.#credentials) } : {}),
                 },
             },
-            endpoint: Endpoint.ReadState,
+            endpoint: types_ts_1.Endpoint.ReadState,
             body: {
-                request_type: ReadRequestType.ReadState,
+                request_type: types_ts_1.ReadRequestType.ReadState,
                 paths: fields.paths,
                 sender,
                 ingress_expiry: calculateIngressExpiry(this.#maxIngressExpiryInMinutes, this.#timeDiffMsecs),
@@ -763,12 +804,12 @@ export class HttpAgent {
     // eslint-disable-next-line
     request) {
         await this.#rootKeyGuard();
-        const canister = Principal.from(canisterId);
+        const canister = principal_1.Principal.from(canisterId);
         function getRequestId(options) {
             for (const path of options.paths) {
                 const [pathName, value] = path;
                 const request_status = new TextEncoder().encode('request_status');
-                if (uint8Equals(pathName, request_status)) {
+                if ((0, buffer_ts_1.uint8Equals)(pathName, request_status)) {
                     return value;
                 }
             }
@@ -779,7 +820,7 @@ export class HttpAgent {
         if (request) {
             // This is a pre-signed request
             transformedRequest = request;
-            requestId = requestIdOf(transformedRequest);
+            requestId = (0, request_id_ts_1.requestIdOf)(transformedRequest);
         }
         else {
             // This is fields, we need to create a request
@@ -787,7 +828,7 @@ export class HttpAgent {
             // Always create a fresh request with the current identity
             const identity = await this.#identity;
             if (!identity) {
-                throw ExternalError.fromCode(new IdentityInvalidErrorCode());
+                throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.IdentityInvalidErrorCode());
             }
             transformedRequest = await this.createReadStateRequest(fields, identity);
         }
@@ -809,7 +850,7 @@ export class HttpAgent {
         }
         catch (error) {
             let readStateError;
-            if (error instanceof AgentError) {
+            if (error instanceof errors_ts_1.AgentError) {
                 // override the error code to include the request details
                 error.code.requestContext = {
                     requestId,
@@ -820,7 +861,7 @@ export class HttpAgent {
                 readStateError = error;
             }
             else {
-                readStateError = UnknownError.fromCode(new UnexpectedErrorCode(error));
+                readStateError = errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode(error));
             }
             this.log.error(`Error while making read state: ${readStateError.message}`, readStateError);
             throw readStateError;
@@ -834,16 +875,16 @@ export class HttpAgent {
                 tree = decoded.tree;
             }
             else {
-                throw ProtocolError.fromCode(new HashTreeDecodeErrorCode('Could not decode time from response'));
+                throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.HashTreeDecodeErrorCode('Could not decode time from response'));
             }
-            const timeLookup = lookup_path(['time'], tree);
-            if (timeLookup.status !== LookupPathStatus.Found) {
-                throw ProtocolError.fromCode(new LookupErrorCode('Time was not found in the response or was not in its expected format.', timeLookup.status));
+            const timeLookup = (0, certificate_ts_1.lookup_path)(['time'], tree);
+            if (timeLookup.status !== certificate_ts_1.LookupPathStatus.Found) {
+                throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.LookupErrorCode('Time was not found in the response or was not in its expected format.', timeLookup.status));
             }
             if (!(timeLookup.value instanceof Uint8Array) && !ArrayBuffer.isView(timeLookup)) {
-                throw ProtocolError.fromCode(new MalformedLookupFoundValueErrorCode('Time was not in its expected format.'));
+                throw errors_ts_1.ProtocolError.fromCode(new errors_ts_1.MalformedLookupFoundValueErrorCode('Time was not in its expected format.'));
             }
-            const date = decodeTime(timeLookup.value);
+            const date = (0, leb_ts_1.decodeTime)(timeLookup.value);
             this.log.print('Time from response:', date);
             this.log.print('Time from response in milliseconds:', date.getTime());
             return date.getTime();
@@ -868,9 +909,9 @@ export class HttpAgent {
                             this.log.print('Syncing time with the IC. No canisterId provided, so falling back to ryjl3-tyaaa-aaaaa-aaaba-cai');
                         }
                         // Fall back with canisterId of the ICP Ledger
-                        const canisterId = canisterIdOverride ?? Principal.from('ryjl3-tyaaa-aaaaa-aaaba-cai');
+                        const canisterId = canisterIdOverride ?? principal_1.Principal.from('ryjl3-tyaaa-aaaaa-aaaba-cai');
                         const anonymousAgent = HttpAgent.createSync({
-                            identity: new AnonymousIdentity(),
+                            identity: new auth_ts_1.AnonymousIdentity(),
                             host: this.host.toString(),
                             fetch: this.#fetch,
                             retryTimes: 0,
@@ -880,7 +921,7 @@ export class HttpAgent {
                         const replicaTimes = await Promise.all(Array(3)
                             .fill(null)
                             .map(async () => {
-                            const status = await canisterStatusRequest({
+                            const status = await (0, index_ts_1.request)({
                                 canisterId,
                                 agent: anonymousAgent,
                                 paths: ['time'],
@@ -904,9 +945,9 @@ export class HttpAgent {
                         }
                     }
                     catch (error) {
-                        const syncTimeError = error instanceof AgentError
+                        const syncTimeError = error instanceof errors_ts_1.AgentError
                             ? error
-                            : UnknownError.fromCode(new UnexpectedErrorCode(error));
+                            : errors_ts_1.UnknownError.fromCode(new errors_ts_1.UnexpectedErrorCode(error));
                         this.log.error('Caught exception while attempting to sync time', syncTimeError);
                         throw syncTimeError;
                     }
@@ -958,7 +999,7 @@ export class HttpAgent {
             await this.fetchRootKey();
         }
         else {
-            throw ExternalError.fromCode(new MissingRootKeyErrorCode(this.#shouldFetchRootKey));
+            throw errors_ts_1.ExternalError.fromCode(new errors_ts_1.MissingRootKeyErrorCode(this.#shouldFetchRootKey));
         }
     }
     async #syncTimeGuard(canisterIdOverride) {
@@ -973,9 +1014,9 @@ export class HttpAgent {
         this.#identity = Promise.resolve(identity);
     }
     async fetchSubnetKeys(canisterId) {
-        const effectiveCanisterId = Principal.from(canisterId);
+        const effectiveCanisterId = principal_1.Principal.from(canisterId);
         await this.#asyncGuard(effectiveCanisterId);
-        const response = await canisterStatusRequest({
+        const response = await (0, index_ts_1.request)({
             canisterId: effectiveCanisterId,
             paths: ['subnet'],
             agent: this,
@@ -990,7 +1031,7 @@ export class HttpAgent {
     }
     _transform(request) {
         let p = Promise.resolve(request);
-        if (request.endpoint === Endpoint.Call) {
+        if (request.endpoint === types_ts_1.Endpoint.Call) {
             for (const fn of this.#updatePipeline) {
                 p = p.then(r => fn(r).then(r2 => r2 || r));
             }
@@ -1018,6 +1059,7 @@ export class HttpAgent {
         return this.#hasSyncedTime;
     }
 }
+exports.HttpAgent = HttpAgent;
 /**
  * Calculates the ingress expiry time based on the maximum allowed expiry in minutes and the time difference in milliseconds.
  * The expiry is rounded down according to the {@link Expiry.fromDeltaInMilliseconds} method.
@@ -1025,8 +1067,8 @@ export class HttpAgent {
  * @param timeDiffMsecs - The time difference in milliseconds to adjust the expiry.
  * @returns The calculated ingress expiry as an Expiry object.
  */
-export function calculateIngressExpiry(maxIngressExpiryInMinutes, timeDiffMsecs) {
+function calculateIngressExpiry(maxIngressExpiryInMinutes, timeDiffMsecs) {
     const ingressExpiryMs = maxIngressExpiryInMinutes * MINUTE_TO_MSECS;
-    return Expiry.fromDeltaInMilliseconds(ingressExpiryMs, timeDiffMsecs);
+    return transforms_ts_1.Expiry.fromDeltaInMilliseconds(ingressExpiryMs, timeDiffMsecs);
 }
 //# sourceMappingURL=index.js.map
