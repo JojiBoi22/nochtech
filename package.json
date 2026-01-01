@@ -1,12 +1,18 @@
 {
-  "name": "@dfinity/cbor",
-  "version": "0.2.2",
-  "description": "A small implementation of Concise Binary Object Representation (CBOR) in pure JavaScript.",
-  "author": "DFINITY Stiftung",
+  "name": "@dfinity/candid",
+  "version": "3.4.3",
+  "author": "DFINITY Stiftung <sdk@dfinity.org>",
   "license": "Apache-2.0",
-  "repository": "github:dfinity/cbor-js",
-  "bugs": "https://github.com/dfinity/cbor-js/issues",
-  "homepage": "https://dfinity.github.io/cbor-js",
+  "description": "JavaScript and TypeScript library to work with candid interfaces",
+  "homepage": "https://js.icp.build/core/v3.2/libs/candid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dfinity/icp-js-core.git",
+    "directory": "packages/candid"
+  },
+  "bugs": {
+    "url": "https://github.com/dfinity/icp-js-core/issues"
+  },
   "keywords": [
     "cbor",
     "data-format",
@@ -41,16 +47,15 @@
       "require": "./dist/cbor.umd.js"
     }
   },
-  "devDependencies": {
-    "@types/node": "^22.15.21",
-    "borc": "^3.0.0",
-    "cbor-x": "^1.6.0",
-    "prettier": "^3.5.3",
-    "simple-cbor": "^0.4.1",
-    "tsdoc-markdown": "^1.2.0",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-checker": "^0.9.3",
-    "vitest": "3.1.4"
+  "peerDependencies": {
+    "@dfinity/principal": "3.4.3"
+  },
+  "scripts": {
+    "build": "tsc -b && tsc -p tsconfig.cjs.json && cp src/package.json lib/esm/package.json",
+    "build:watch": "tsc -b --watch",
+    "bundle": "esbuild --bundle src/index.ts --outfile=dist/index.js --platform=browser",
+    "attw": "attw --pack .",
+    "test": "jest",
+    "test:coverage": "jest --collectCoverage"
   }
 }
