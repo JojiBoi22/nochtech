@@ -1,4 +1,4 @@
-# Azle Hello World
+# NochTech Hello World
 
 - [Installation](#installation)
 - [Deployment](#deployment)
