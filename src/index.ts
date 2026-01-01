@@ -1,13 +1,18 @@
 /**
  * @module api
  */
+
 export * from './actor.ts';
 export * from './agent/index.ts';
 export * from './agent/http/transforms.ts';
 export * from './agent/http/types.ts';
 export * from './auth.ts';
 export * from './certificate.ts';
-export { IC_REQUEST_DOMAIN_SEPARATOR, IC_RESPONSE_DOMAIN_SEPARATOR, IC_REQUEST_AUTH_DELEGATION_DOMAIN_SEPARATOR, } from './constants.ts';
+export {
+  IC_REQUEST_DOMAIN_SEPARATOR,
+  IC_RESPONSE_DOMAIN_SEPARATOR,
+  IC_REQUEST_AUTH_DELEGATION_DOMAIN_SEPARATOR,
+} from './constants.ts';
 export * from './der.ts';
 export * from './errors.ts';
 export * from './fetch_candid.ts';
@@ -27,6 +32,6 @@ export { CanisterStatus };
  *
  * The primary method for this namespace is {@link CanisterStatus.request}
  */
+
 export { Cbor, ToCborValue } from './cbor.ts';
 export * from './polling/index.ts';
-//# sourceMappingURL=index.d.ts.map
