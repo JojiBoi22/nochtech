@@ -1,14 +1,14 @@
 {
-  "name": "@dfinity/principal",
+  "name": "@dfinity/candid",
   "version": "3.4.3",
   "author": "DFINITY Stiftung <sdk@dfinity.org>",
   "license": "Apache-2.0",
-  "description": "JavaScript and TypeScript library to work with Internet Computer principals",
-  "homepage": "https://js.icp.build/core/v3.2/libs/principal",
+  "description": "JavaScript and TypeScript library to work with candid interfaces",
+  "homepage": "https://js.icp.build/core/v3.2/libs/candid",
   "repository": {
     "type": "git",
     "url": "https://github.com/dfinity/icp-js-core.git",
-    "directory": "packages/principal"
+    "directory": "packages/candid"
   },
   "bugs": {
     "url": "https://github.com/dfinity/icp-js-core/issues"
@@ -42,11 +42,8 @@
     "require": "./lib/cjs/index.js",
     "default": "./lib/esm/index.js"
   },
-  "devDependencies": {
-    "@dfinity/utils": "^3.2.0"
-  },
-  "dependencies": {
-    "@noble/hashes": "^1.8.0"
+  "peerDependencies": {
+    "@dfinity/principal": "3.4.3"
   },
   "scripts": {
     "build": "tsc -b && tsc -p tsconfig.cjs.json && cp src/package.json lib/esm/package.json",

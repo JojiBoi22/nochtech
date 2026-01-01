@@ -1,16 +1,13 @@
-# @icp-sdk/core/principal
+# @icp-sdk/core/candid
 
-JavaScript and TypeScript module to work with Internet Computer Principals.
+JavaScript and TypeScript module to work with Candid interfaces
 
 ## Usage
 
 ```ts
-import { Principal } from '@icp-sdk/core/principal';
-
-const canisterId = Principal.fromText('uqqxf-5h777-77774-qaaaa-cai');
-const anonymousPrincipal = Principal.anonymous();
+import { IDL } from '@icp-sdk/core/candid';
 ```
 
 ## API Reference
 
-Additional API Documentation can be found [here](https://js.icp.build/core/latest/libs/principal/api/).
+Additional API Documentation can be found [here](https://js.icp.build/core/latest/libs/candid/api).
