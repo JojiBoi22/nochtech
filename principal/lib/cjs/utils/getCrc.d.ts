@@ -1,0 +1,6 @@
+/**
+ * Calculate the CRC32 of a Uint8Array.
+ * @param buf The Uint8Array to calculate the CRC32 of.
+ */
+export declare function getCrc32(buf: Uint8Array): number;
+//# sourceMappingURL=getCrc.d.ts.map
