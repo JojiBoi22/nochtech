@@ -1,27 +1,17 @@
 "use strict";
-/**
- * @module api
- */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.base32Decode = exports.base32Encode = exports.getCrc32 = void 0;
-__exportStar(require("./principal.js"), exports);
-var getCrc_ts_1 = require("./utils/getCrc.js");
-Object.defineProperty(exports, "getCrc32", { enumerable: true, get: function () { return getCrc_ts_1.getCrc32; } });
-var base32_ts_1 = require("./utils/base32.js");
-Object.defineProperty(exports, "base32Encode", { enumerable: true, get: function () { return base32_ts_1.base32Encode; } });
-Object.defineProperty(exports, "base32Decode", { enumerable: true, get: function () { return base32_ts_1.base32Decode; } });
-//# sourceMappingURL=index.js.map
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.roles = exports.roleElements = exports.elementRoles = exports.dom = exports.aria = void 0;
+var _ariaPropsMap = _interopRequireDefault(require("./ariaPropsMap"));
+var _domMap = _interopRequireDefault(require("./domMap"));
+var _rolesMap = _interopRequireDefault(require("./rolesMap"));
+var _elementRoleMap = _interopRequireDefault(require("./elementRoleMap"));
+var _roleElementMap = _interopRequireDefault(require("./roleElementMap"));
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
+var aria = exports.aria = _ariaPropsMap.default;
+var dom = exports.dom = _domMap.default;
+var roles = exports.roles = _rolesMap.default;
+var elementRoles = exports.elementRoles = _elementRoleMap.default;
+var roleElements = exports.roleElements = _roleElementMap.default;
