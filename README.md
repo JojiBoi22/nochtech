@@ -1,107 +1,59 @@
-# @icp-sdk/core/candid
+# `DFXNode`
 
-JavaScript and TypeScript module to work with Candid interfaces
+Welcome to your new `DFXNode` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
 
-## Usage
+To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
 
-Simple:
+To learn more before you start working with `DFXNode`, see the following documentation available online:
 
-```ts
-import { encode, decode } from '@dfinity/cbor';
+- [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
+- [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
+- [Motoko Programming Language Guide](https://internetcomputer.org/docs/current/motoko/main/motoko)
+- [Motoko Language Quick Reference](https://internetcomputer.org/docs/current/motoko/main/language-manual)
 
-const value = true;
-const encoded = encode(value); // returns `Uint8Array [245]` (which is "F5" in hex)
-const decoded = decode(encoded); // returns `true`
+If you want to start working on your project right away, you might want to try the following commands:
+
+```bash
+cd DFXNode/
+dfx help
+dfx canister --help
 ```
 
-With replacer/reviver:
+## Running the project locally
 
-```ts
-import { encode, decode, type Replacer, type Reviver } from '@dfinity/cbor';
+If you want to test your project locally, you can use the following commands:
 
-const value = { a: 1, b: 2 };
+```bash
+# Starts the replica, running in the background
+dfx start --background
 
-// Encoding with replacer
-const replacer: Replacer = val => (typeof val === 'number' ? val * 2 : val);
-const result = encode(value, replacer);
-decode(result); // { a: 2, b: 4 }
-
-// Decoding with reviver
-const bytes = encode(value);
-const reviver: Reviver = val => (typeof val === 'number' ? val * 2 : val);
-decode(bytes, reviver); // { a: 2, b: 4 }
+# Deploys your canisters to the replica and generates your candid interface
+dfx deploy
 ```
 
-## API
+Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
 
-<!-- TSDOC_START -->
+If you have made changes to your backend canister, you can generate a new candid interface with
 
-## :toolbox: Functions
-
-- [decode](#gear-decode)
-- [encode](#gear-encode)
-- [encodeWithSelfDescribedTag](#gear-encodewithselfdescribedtag)
-
-### :gear: decode
-
-Decodes a CBOR byte array into a value.
-See {@link Reviver} for more information.
-
-| Function | Type                                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------------------- |
-| `decode` | `<T extends unknown = any>(input: Uint8Array<ArrayBufferLike>, reviver?: Reviver<T> or undefined) => T` |
-
-Parameters:
-
-- `input`: - The CBOR byte array to decode.
-- `reviver`: - A function that can be used to manipulate the decoded value.
-
-Examples:
-
-Simple
-
-```ts
-const value = true;
-const encoded = encode(value); // returns `Uint8Array [245]` (which is "F5" in hex)
-const decoded = decode(encoded); // returns `true`
+```bash
+npm run generate
 ```
 
-Reviver
+at any time. This is recommended before starting the frontend development server, and will be run automatically any time you run `dfx deploy`.
 
-```ts
-const bytes = ...; // Uint8Array corresponding to the CBOR encoding of `{ a: 1, b: 2 }`
-const reviver: Reviver = val => (typeof val === 'number' ? val * 2 : val);
-decode(bytes, reviver); // returns `{ a: 2, b: 4 }`
+If you are making frontend changes, you can start a development server with
+
+```bash
+npm start
 ```
 
-### :gear: encode
+Which will start a server at `http://localhost:8080`, proxying API requests to the replica at port 4943.
 
-Encodes a value into a CBOR byte array.
+### Note on frontend environment variables
 
-| Function | Type                                                                                                 |
-| -------- | ---------------------------------------------------------------------------------------------------- |
-| `encode` | `<T = any>(value: CborValue<T>, replacer?: Replacer<T> or undefined) => Uint8Array<ArrayBufferLike>` |
+If you are hosting frontend code somewhere without using DFX, you may need to make one of the following adjustments to ensure your project does not fetch the root key in production:
 
-Parameters:
-
-- `value`: - The value to encode.
-- `replacer`: - A function that can be used to manipulate the input before it is encoded.
-
-Examples:
-
-Simple
-
-```ts
-const value = true;
-const encoded = encode(value); // returns `Uint8Array [245]` (which is "F5" in hex)
-```
-
-Replacer
-
-```ts
-import { IDL } from '@icp-sdk/core/candid';
-```
-
-## License
-
-Additional API Documentation can be found [here](https://js.icp.build/core/latest/libs/candid/api).
+- set`DFX_NETWORK` to `ic` if you are using Webpack
+- use your own preferred method to replace `process.env.DFX_NETWORK` in the autogenerated declarations
+  - Setting `canisters -> {asset_canister_id} -> declarations -> env_override to a string` in `dfx.json` will replace `process.env.DFX_NETWORK` with the string in the autogenerated declarations
+- Write your own `createActor` constructor

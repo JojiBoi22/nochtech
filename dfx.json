@@ -1,12 +1,26 @@
 {
-    "canisters": {
-        "hello_world": {
-            "type": "azle",
-            "main": "src/index.ts",
-            "declarations": {
-                "output": "test/dfx_generated/hello_world",
-                "node_compatibility": true
-            }
-        }
+  "canisters": {
+    "DFXNode_backend": {
+      "main": "src/DFXNode_backend/main.mo",
+      "type": "motoko"
+    },
+    "DFXNode_frontend": {
+      "dependencies": [
+        "DFXNode_backend"
+      ],
+      "source": [
+        "src/DFXNode_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "DFXNode_frontend"
     }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
 }
